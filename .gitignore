@@ -10,3 +10,4 @@ build/
 .vercel
 *.tsbuildinfo
 prisma/migrations/dev.db*
+wp-helper-plugin*.zip
