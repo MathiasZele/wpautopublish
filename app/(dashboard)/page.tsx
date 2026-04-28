@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Globe, FileText, Coins, Zap, ExternalLink, Send } from 'lucide-react';
+import { Globe, FileText, Coins, Zap, ExternalLink, Send, Newspaper, Image as ImageIcon } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { StatsCard } from '@/components/ui/StatsCard';
@@ -105,10 +105,40 @@ export default async function DashboardPage() {
           <ul className="divide-y">
             {recent.map((log) => (
               <li key={log.id} className="px-6 py-3 flex items-center justify-between text-sm gap-3">
+                {log.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={log.imageUrl}
+                    alt=""
+                    className="w-12 h-12 rounded-lg object-cover flex-shrink-0 bg-gray-100"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 text-gray-300">
+                    <ImageIcon size={18} />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{log.title}</div>
-                  <div className="text-xs text-gray-500">
-                    {log.website.name} · {log.mode} · {log.createdAt.toLocaleString('fr-FR')}
+                  <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
+                    <span>{log.website.name}</span>
+                    <span>·</span>
+                    <span>{log.mode}</span>
+                    <span>·</span>
+                    <span>{log.createdAt.toLocaleString('fr-FR')}</span>
+                    {log.sourceName && log.sourceUrl && (
+                      <>
+                        <span>·</span>
+                        <a
+                          href={log.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-brand-600 hover:underline"
+                        >
+                          <Newspaper size={11} />
+                          {log.sourceName}
+                        </a>
+                      </>
+                    )}
                   </div>
                 </div>
                 {log.wpPostUrl && (

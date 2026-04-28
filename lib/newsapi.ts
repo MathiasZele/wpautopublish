@@ -1,4 +1,4 @@
-interface NewsArticle {
+export interface NewsArticle {
   title: string;
   description: string;
   url: string;
@@ -13,16 +13,28 @@ interface NewsApiResponse {
   articles: NewsArticle[];
 }
 
-export async function getNewsForQuery(query: string, pageSize = 5): Promise<NewsArticle[]> {
+export interface NewsSearchOpts {
+  query: string;
+  pageSize?: number;
+  maxAgeHours?: number;
+  language?: string;
+}
+
+export async function searchNews(opts: NewsSearchOpts): Promise<NewsArticle[]> {
   const apiKey = process.env.NEWS_API_KEY;
   if (!apiKey) throw new Error('NEWS_API_KEY is not configured');
 
   const params = new URLSearchParams({
-    q: query,
-    pageSize: String(pageSize),
+    q: opts.query,
+    pageSize: String(opts.pageSize ?? 10),
     sortBy: 'publishedAt',
-    language: 'fr',
+    language: opts.language ?? 'fr',
   });
+
+  if (opts.maxAgeHours && opts.maxAgeHours > 0) {
+    const fromDate = new Date(Date.now() - opts.maxAgeHours * 60 * 60 * 1000);
+    params.set('from', fromDate.toISOString());
+  }
 
   const response = await fetch(`https://newsapi.org/v2/everything?${params}`, {
     headers: { 'X-Api-Key': apiKey },
@@ -36,3 +48,9 @@ export async function getNewsForQuery(query: string, pageSize = 5): Promise<News
   const data = (await response.json()) as NewsApiResponse;
   return data.articles ?? [];
 }
+
+/**
+ * @deprecated use searchNews instead
+ */
+export const getNewsForQuery = (query: string, pageSize = 5) =>
+  searchNews({ query, pageSize });

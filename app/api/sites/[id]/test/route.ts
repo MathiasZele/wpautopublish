@@ -13,8 +13,13 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   });
   if (!site) return new NextResponse('Not Found', { status: 404 });
 
-  const password = decrypt(site.wpAppPassword);
-  const result = await testWordPressConnection(site.url, site.wpUsername, password);
+  let result: { success: boolean; error?: string };
+  try {
+    const password = decrypt(site.wpAppPassword);
+    result = await testWordPressConnection(site.url, site.wpUsername, password);
+  } catch {
+    result = { success: false, error: 'Configuration invalide' };
+  }
 
   await prisma.website.update({
     where: { id: site.id },

@@ -1,3 +1,6 @@
+import { decrypt } from './encryption';
+import { assertPublicUrl, safeFetch } from './safeUrl';
+
 interface PublishParams {
   website: { url: string; customEndpointKey: string };
   title: string;
@@ -13,13 +16,18 @@ interface PublishParams {
 }
 
 export async function publishToWordPress(params: PublishParams) {
-  const endpoint = `${params.website.url.replace(/\/$/, '')}/wp-json/wp-autopublish/v1/publish`;
+  const baseUrl = params.website.url.replace(/\/$/, '');
+  const endpoint = `${baseUrl}/wp-json/wp-autopublish/v1/publish`;
+
+  await assertPublicUrl(endpoint);
+
+  const decryptedSecret = decrypt(params.website.customEndpointKey);
 
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-WP-AutoPublish-Secret': params.website.customEndpointKey,
+      'X-WP-AutoPublish-Secret': decryptedSecret,
     },
     body: JSON.stringify({
       title: params.title,
@@ -33,11 +41,11 @@ export async function publishToWordPress(params: PublishParams) {
       tags: params.tags ?? [],
       excerpt: params.excerpt ?? '',
     }),
+    redirect: 'manual',
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`WordPress ${response.status}: ${error}`);
+    throw new Error(`WordPress ${response.status}`);
   }
 
   return response.json() as Promise<{ success: boolean; post_id: number; url: string }>;
@@ -49,18 +57,21 @@ export async function testWordPressConnection(
   appPassword: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`${siteUrl.replace(/\/$/, '')}/wp-json/wp/v2/users/me`, {
+    const url = `${siteUrl.replace(/\/$/, '')}/wp-json/wp/v2/users/me`;
+    await assertPublicUrl(url);
+    const response = await fetch(url, {
       headers: {
         Authorization: `Basic ${Buffer.from(`${username}:${appPassword}`).toString('base64')}`,
       },
       cache: 'no-store',
+      redirect: 'manual',
     });
     if (!response.ok) {
       return { success: false, error: `HTTP ${response.status}` };
     }
     return { success: true };
   } catch (e) {
-    return { success: false, error: (e as Error).message };
+    return { success: false, error: 'Connexion impossible' };
   }
 }
 
@@ -76,13 +87,19 @@ export async function fetchWordPressCategories(
   username: string,
   appPassword: string,
 ): Promise<WPCategory[]> {
+  const baseUrl = siteUrl.replace(/\/$/, '');
   const auth = `Basic ${Buffer.from(`${username}:${appPassword}`).toString('base64')}`;
   const all: WPCategory[] = [];
   let page = 1;
 
   while (true) {
-    const url = `${siteUrl.replace(/\/$/, '')}/wp-json/wp/v2/categories?per_page=100&page=${page}`;
-    const res = await fetch(url, { headers: { Authorization: auth }, cache: 'no-store' });
+    const url = `${baseUrl}/wp-json/wp/v2/categories?per_page=100&page=${page}`;
+    await assertPublicUrl(url);
+    const res = await fetch(url, {
+      headers: { Authorization: auth },
+      cache: 'no-store',
+      redirect: 'manual',
+    });
     if (!res.ok) {
       if (res.status === 400 && page > 1) break;
       throw new Error(`WP categories ${res.status}`);

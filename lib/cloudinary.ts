@@ -1,4 +1,5 @@
 import { v2 as cloudinary } from 'cloudinary';
+import { assertPublicUrl } from './safeUrl';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -7,6 +8,7 @@ cloudinary.config({
 });
 
 export async function uploadImageFromUrl(sourceUrl: string): Promise<string> {
+  await assertPublicUrl(sourceUrl);
   const result = await cloudinary.uploader.upload(sourceUrl, {
     folder: 'wp-autopublish',
     resource_type: 'image',

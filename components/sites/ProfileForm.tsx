@@ -22,10 +22,20 @@ interface ProfileFormProps {
     autoMode: boolean;
     customPrompt: string;
     newsApiQuery: string;
+    maxArticleAgeHours: number;
     defaultCategoryIds: number[];
     autoImage: boolean;
   };
 }
+
+const AGE_PRESETS = [
+  { hours: 6, label: '6 dernières heures' },
+  { hours: 24, label: '24 heures' },
+  { hours: 48, label: '2 jours' },
+  { hours: 72, label: '3 jours' },
+  { hours: 168, label: '1 semaine' },
+  { hours: 720, label: '1 mois' },
+];
 
 export function ProfileForm({ siteId, initial }: ProfileFormProps) {
   const router = useRouter();
@@ -77,6 +87,7 @@ export function ProfileForm({ siteId, initial }: ProfileFormProps) {
       autoImage: state.autoImage,
       customPrompt: state.customPrompt || null,
       newsApiQuery: state.newsApiQuery || null,
+      maxArticleAgeHours: state.maxArticleAgeHours,
       defaultCategoryIds: state.defaultCategoryIds,
       topics: topicsInput
         .split(',')
@@ -143,15 +154,29 @@ export function ProfileForm({ siteId, initial }: ProfileFormProps) {
         <p className="text-xs text-gray-500 mt-1">Utilisées en mode auto si aucune requête NewsAPI ne ramène de résultat.</p>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Requête NewsAPI (optionnel)</label>
-        <input
-          value={state.newsApiQuery}
-          onChange={(e) => setState({ ...state, newsApiQuery: e.target.value })}
-          placeholder="intelligence artificielle"
-          className="w-full px-3 py-2 border rounded-lg"
-        />
-        <p className="text-xs text-gray-500 mt-1">Récupère les actualités fraîches comme contexte.</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">Requête NewsAPI</label>
+          <input
+            value={state.newsApiQuery}
+            onChange={(e) => setState({ ...state, newsApiQuery: e.target.value })}
+            placeholder="intelligence artificielle"
+            className="w-full px-3 py-2 border rounded-lg"
+          />
+          <p className="text-xs text-gray-500 mt-1">Sujets et images viendront de vrais articles trouvés.</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Articles datant de moins de</label>
+          <select
+            value={state.maxArticleAgeHours}
+            onChange={(e) => setState({ ...state, maxArticleAgeHours: Number(e.target.value) })}
+            className="w-full px-3 py-2 border rounded-lg"
+          >
+            {AGE_PRESETS.map((p) => (
+              <option key={p.hours} value={p.hours}>{p.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div>
@@ -225,16 +250,22 @@ export function ProfileForm({ siteId, initial }: ProfileFormProps) {
         </label>
       </div>
 
-      <label className="flex items-center gap-3 cursor-pointer pt-2 border-t">
+      <label className="flex items-start gap-3 cursor-pointer pt-2 border-t">
         <input
           type="checkbox"
           checked={state.autoImage}
           onChange={(e) => setState({ ...state, autoImage: e.target.checked })}
-          className="w-5 h-5 accent-brand-600"
+          className="w-5 h-5 accent-brand-600 mt-0.5"
         />
-        <ImageIcon size={16} className="text-gray-500" />
-        <span className="text-sm font-medium">Trouver automatiquement une image à la une</span>
-        <span className="text-xs text-gray-500">(Pexels si configuré, sinon ignoré)</span>
+        <ImageIcon size={16} className="text-gray-500 mt-1" />
+        <div className="flex-1">
+          <div className="text-sm font-medium">Exiger une image à la une</div>
+          <div className="text-xs text-gray-500">
+            L'image vient toujours d'un vrai article NewsAPI (3 niveaux de recherche).
+            Si activé : la publication échoue si aucune image n'est trouvée.
+            Si désactivé : l'article est publié sans image plutôt que d'échouer.
+          </div>
+        </div>
       </label>
 
       <button

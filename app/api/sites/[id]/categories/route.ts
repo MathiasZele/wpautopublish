@@ -18,6 +18,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     const categories = await fetchWordPressCategories(site.url, site.wpUsername, password);
     return NextResponse.json(categories);
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 502 });
+    console.error('fetchWordPressCategories failed', e);
+    return NextResponse.json({ error: 'Impossible de récupérer les catégories' }, { status: 502 });
   }
 }

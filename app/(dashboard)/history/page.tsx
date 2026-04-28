@@ -1,4 +1,4 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Newspaper, Image as ImageIcon } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -82,7 +82,8 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
             <tr>
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Site</th>
-              <th className="px-4 py-3">Titre</th>
+              <th className="px-4 py-3" colSpan={2}>Article</th>
+              <th className="px-4 py-3">Source</th>
               <th className="px-4 py-3">Mode</th>
               <th className="px-4 py-3">Tokens</th>
               <th className="px-4 py-3">Coût</th>
@@ -92,7 +93,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
           <tbody className="divide-y">
             {logs.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-gray-500">
+                <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
                   Aucune entrée
                 </td>
               </tr>
@@ -103,7 +104,21 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
                   {log.createdAt.toLocaleString('fr-FR')}
                 </td>
                 <td className="px-4 py-3 text-xs">{log.website.name}</td>
-                <td className="px-4 py-3 max-w-md">
+                <td className="px-4 py-3 w-12">
+                  {log.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={log.imageUrl}
+                      alt=""
+                      className="w-10 h-10 rounded object-cover bg-gray-100"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-gray-300">
+                      <ImageIcon size={14} />
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3 max-w-xs">
                   <div className="flex items-center gap-2">
                     <div className="truncate font-medium">{log.title}</div>
                     {log.wpPostUrl && (
@@ -120,6 +135,22 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
                   </div>
                   {log.errorMessage && (
                     <div className="text-xs text-red-600 truncate">{log.errorMessage}</div>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-xs max-w-[140px]">
+                  {log.sourceUrl && log.sourceName ? (
+                    <a
+                      href={log.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-brand-600 hover:underline truncate"
+                      title={log.sourceName}
+                    >
+                      <Newspaper size={11} className="flex-shrink-0" />
+                      <span className="truncate">{log.sourceName}</span>
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">—</span>
                   )}
                 </td>
                 <td className="px-4 py-3 text-xs">{log.mode}</td>

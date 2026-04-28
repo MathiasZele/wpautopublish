@@ -34,6 +34,7 @@ export default async function SiteProfilePage({ params }: { params: { id: string
           autoMode: site.profile?.autoMode ?? false,
           customPrompt: site.profile?.customPrompt ?? '',
           newsApiQuery: site.profile?.newsApiQuery ?? '',
+          maxArticleAgeHours: site.profile?.maxArticleAgeHours ?? 72,
           defaultCategoryIds: site.profile?.defaultCategoryIds ?? [],
           autoImage: site.profile?.autoImage ?? true,
         }}

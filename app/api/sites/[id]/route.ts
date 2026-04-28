@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { encrypt } from '@/lib/encryption';
+import { assertPublicUrl, UnsafeUrlError } from '@/lib/safeUrl';
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
@@ -21,6 +22,7 @@ const updateSchema = z.object({
       autoImage: z.boolean().optional(),
       customPrompt: z.string().nullable().optional(),
       newsApiQuery: z.string().nullable().optional(),
+      maxArticleAgeHours: z.number().int().min(1).max(8760).optional(),
       defaultCategoryIds: z.array(z.number().int()).optional(),
     })
     .optional(),
@@ -40,12 +42,13 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const site = await ownedSite(params.id, session.user.id);
   if (!site) return new NextResponse('Not Found', { status: 404 });
 
+  // customEndpointKey: on ne renvoie JAMAIS la valeur en clair, juste un indicateur
   return NextResponse.json({
     id: site.id,
     name: site.name,
     url: site.url,
     wpUsername: site.wpUsername,
-    customEndpointKey: site.customEndpointKey,
+    customEndpointKeySet: !!site.customEndpointKey,
     status: site.status,
     lastTestedAt: site.lastTestedAt,
     profile: site.profile,
@@ -62,10 +65,19 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   const body = await req.json().catch(() => null);
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Données invalides', issues: parsed.error.issues }, { status: 400 });
+    return NextResponse.json({ error: 'Données invalides' }, { status: 400 });
   }
 
-  const { profile, wpAppPassword, url, ...rest } = parsed.data;
+  const { profile, wpAppPassword, customEndpointKey, url, ...rest } = parsed.data;
+
+  if (url) {
+    try {
+      await assertPublicUrl(url);
+    } catch (e) {
+      const msg = e instanceof UnsafeUrlError ? e.message : 'URL refusée';
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+  }
 
   const updated = await prisma.website.update({
     where: { id: params.id },
@@ -73,6 +85,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       ...rest,
       ...(url ? { url: url.replace(/\/$/, '') } : {}),
       ...(wpAppPassword ? { wpAppPassword: encrypt(wpAppPassword) } : {}),
+      ...(customEndpointKey ? { customEndpointKey: encrypt(customEndpointKey) } : {}),
       ...(profile
         ? {
             profile: {

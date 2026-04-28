@@ -1,10 +1,20 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { getArticleQueue } from '@/lib/queue';
 
+function authorized(req: Request): boolean {
+  const expected = process.env.CRON_SECRET;
+  if (!expected) return false;
+  const provided = req.headers.get('x-cron-secret') ?? '';
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 export async function POST(req: Request) {
-  const secret = req.headers.get('x-cron-secret');
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+  if (!authorized(req)) {
     return new NextResponse('Forbidden', { status: 403 });
   }
 
@@ -25,7 +35,7 @@ export async function POST(req: Request) {
     for (let i = 0; i < count; i++) {
       const job = await queue.add(
         'auto',
-        { websiteId: site.id, mode: 'AUTO' },
+        { websiteId: site.id, mode: 'AUTO', articleIndex: i },
         { delay: i * 60_000 },
       );
       if (job.id) enqueued.push(job.id);
@@ -33,8 +43,4 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ enqueued: enqueued.length, sites: sites.length });
-}
-
-export async function GET(req: Request) {
-  return POST(req);
 }

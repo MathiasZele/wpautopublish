@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getArticleQueue } from '@/lib/queue';
+import { assertPublicUrl, UnsafeUrlError } from '@/lib/safeUrl';
 
 const schema = z.object({
   websiteId: z.string().min(1),
@@ -18,13 +19,22 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Données invalides', issues: parsed.error.issues }, { status: 400 });
+    return NextResponse.json({ error: 'Données invalides' }, { status: 400 });
   }
 
   const site = await prisma.website.findFirst({
     where: { id: parsed.data.websiteId, userId: session.user.id },
   });
   if (!site) return new NextResponse('Not Found', { status: 404 });
+
+  if (parsed.data.imageUrl) {
+    try {
+      await assertPublicUrl(parsed.data.imageUrl);
+    } catch (e) {
+      const msg = e instanceof UnsafeUrlError ? e.message : 'URL d\'image refusée';
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+  }
 
   const job = await getArticleQueue().add('manual', {
     websiteId: site.id,
