@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Commande /help
     if (lowText.startsWith('/help') || lowText.startsWith('/aide')) {
-      const help = `🤖 *Aide WP-Autopublish*
+      const help = `Menu Aide *WP-AUTOPUBLISH* by *NZM* 😎🦦
 
 /post [nb] [site] [brouillon] : Publie X articles
 /direct [site] : Publie un article à partir de votre texte
