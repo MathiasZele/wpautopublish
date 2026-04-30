@@ -265,8 +265,15 @@ export const articleWorker = new Worker<ArticleJobData>(
       });
 
       if (updatedRequest.successCount + updatedRequest.failedCount >= updatedRequest.totalCount) {
-        const links = updatedRequest.articleLinks.map((l, i) => `${i + 1}. ${l}`).join('\n');
-        const message = `🏁 *Batch terminé pour ${website.name}*\n\nArticles publiés (${updatedRequest.successCount}/${updatedRequest.totalCount}) :\n${links}`;
+        const links = updatedRequest.articleLinks.map((l) => `🔗 ${l}`).join('\n');
+        const message = `🏁 *Batch terminé pour ${website.name}*
+
+✅ Réussis: ${updatedRequest.successCount}
+❌ Échecs: ${updatedRequest.failedCount}
+
+*Articles publiés :*
+${links || '_Aucun article publié_'}`;
+
         await sendWhatsAppMessage(updatedRequest.instanceId, updatedRequest.senderJid, message);
         
         await prisma.whatsAppRequest.update({
@@ -314,8 +321,15 @@ articleWorker.on('failed', async (job, err) => {
       });
 
       if (updatedRequest.successCount + updatedRequest.failedCount >= updatedRequest.totalCount) {
-        const links = updatedRequest.articleLinks.map((l, i) => `${i + 1}. ${l}`).join('\n');
-        const message = `🏁 *Batch terminé* (avec des erreurs)\n\nRéussis: ${updatedRequest.successCount}\nÉchecs: ${updatedRequest.failedCount}\n\nArticles publiés :\n${links}`;
+        const links = updatedRequest.articleLinks.map((l) => `🔗 ${l}`).join('\n');
+        const message = `🏁 *Batch terminé pour ${website.name}*
+
+✅ Réussis: ${updatedRequest.successCount}
+❌ Échecs: ${updatedRequest.failedCount}
+
+*Articles publiés :*
+${links || '_Aucun article publié_'}`;
+
         await sendWhatsAppMessage(updatedRequest.instanceId, updatedRequest.senderJid, message);
         
         await prisma.whatsAppRequest.update({
