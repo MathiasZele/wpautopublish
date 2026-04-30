@@ -135,11 +135,16 @@ export const articleWorker = new Worker<ArticleJobData>(
         }
       }
 
-      const wpResult = await publishToWordPress(website, {
+      const wpResult = await publishToWordPress({
+        website,
         title,
         content,
+        status: 'publish',
+        yoast_title: title,
+        yoast_metadesc: '',
+        yoast_focuskw: '',
         categories: categoryIds,
-        imageUrl: finalImageUrl,
+        featured_image_url: finalImageUrl,
       });
 
       await prisma.articleLog.create({
