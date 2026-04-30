@@ -21,16 +21,32 @@ export async function POST(req: NextRequest) {
     const message = body.data;
     const remoteJid = message.key.remoteJid;
     
+    // Détection récursive de l'image pour gérer ephemeralMessage, viewOnceMessage, etc.
+    const findImageMessage = (msg: any): any => {
+      if (!msg) return null;
+      if (msg.imageMessage) return msg.imageMessage;
+      if (msg.viewOnceMessage?.message) return findImageMessage(msg.viewOnceMessage.message);
+      if (msg.ephemeralMessage?.message) return findImageMessage(msg.ephemeralMessage.message);
+      return null;
+    };
+    
+    const imageMsg = findImageMessage(message.message);
+    const isImage = !!imageMsg;
+    
     // Extraction du texte (depuis conversation, message étendu ou caption d'image)
     const text = message.message?.conversation || 
                  message.message?.extendedTextMessage?.text || 
-                 message.message?.imageMessage?.caption || 
-                 message.message?.viewOnceMessage?.message?.imageMessage?.caption ||
+                 imageMsg?.caption ||
                  '';
     
-    const isImage = !!(message.message?.imageMessage || message.message?.viewOnceMessage?.message?.imageMessage);
-    
-    console.log('Sender:', remoteJid, 'Text:', text, 'IsImage:', isImage);
+    console.log('--- NEW MESSAGE ---');
+    console.log('Sender:', remoteJid);
+    console.log('isImage:', isImage);
+    console.log('text:', text);
+    if (!isImage && !text) {
+      console.log('Message structure:', JSON.stringify(message.message, null, 2));
+    }
+
 
     // Si pas de texte ET pas d'image, on ignore
     if (!text && !isImage) return NextResponse.json({ status: 'no_content' });
