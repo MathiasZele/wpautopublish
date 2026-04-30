@@ -172,3 +172,13 @@ enum PublishMode {
   AUTO
   MANUAL
 }
+
+model WhatsAppSession {
+  id         String   @id @default(cuid())
+  senderJid  String   @unique
+  step       String   // 'WAITING_FOR_TEXT', 'WAITING_FOR_IMAGE'
+  websiteId  String
+  data       Json?    // Stores temporary text, title, etc.
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}

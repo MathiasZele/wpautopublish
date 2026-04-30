@@ -1,3 +1,4 @@
+import { Website } from '@prisma/client';
 import { decrypt } from './encryption';
 import { assertPublicUrl, safeFetch } from './safeUrl';
 

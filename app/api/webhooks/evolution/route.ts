@@ -41,18 +41,77 @@ export async function POST(req: NextRequest) {
 
     if (!text) return NextResponse.json({ status: 'no_text' });
 
+    // ─── GESTION DES SESSIONS (Multi-étapes) ──────────────────────────────────
+    const session = await prisma.whatsAppSession.findUnique({
+      where: { senderJid: remoteJid }
+    });
+
+    if (session) {
+      if (session.step === 'WAITING_FOR_TEXT') {
+        const website = await prisma.website.findUnique({ where: { id: session.websiteId } });
+        if (!website) {
+          await prisma.whatsAppSession.delete({ where: { id: session.id } });
+          return NextResponse.json({ status: 'session_reset_site_missing' });
+        }
+
+        await prisma.whatsAppSession.update({
+          where: { id: session.id },
+          data: { 
+            step: 'WAITING_FOR_IMAGE',
+            data: { text: text }
+          }
+        });
+
+        await sendWhatsAppMessage(instanceName, remoteJid, "📥 Texte reçu ! Maintenant, envoyez l'URL d'une image ou tapez *'auto'* pour utiliser l'IA génératrice d'images.");
+        return NextResponse.json({ status: 'session_step_2' });
+      }
+
+      if (session.step === 'WAITING_FOR_IMAGE') {
+        const sessionData = session.data as any;
+        const website = await prisma.website.findUnique({ where: { id: session.websiteId } });
+        
+        if (!website) {
+          await prisma.whatsAppSession.delete({ where: { id: session.id } });
+          return NextResponse.json({ status: 'session_reset_site_missing' });
+        }
+
+        const imageUrl = text.toLowerCase() === 'auto' ? null : text;
+        
+        // Ajouter à la queue pour traitement (reformulation + publication)
+        const articleQueue = getArticleQueue();
+        await articleQueue.add('auto-article', {
+          websiteId: website.id,
+          mode: 'MANUAL',
+          manualInput: sessionData.text,
+          manualImageUrl: imageUrl || undefined,
+          autoCategorize: true
+        });
+
+        await prisma.whatsAppSession.delete({ where: { id: session.id } });
+        await sendWhatsAppMessage(instanceName, remoteJid, `🚀 L'article est en cours de reformulation et sera publié sur *${website.name}* dans quelques instants !`);
+        return NextResponse.json({ status: 'session_completed' });
+      }
+    }
+
+    // ─── FILTRE COMMANDES (Doit commencer par /) ─────────────────────────────
+    if (!text.startsWith('/')) {
+      console.log('Ignoring non-command message');
+      return NextResponse.json({ status: 'not_a_command' });
+    }
+
     const lowText = text.toLowerCase();
 
     // 1. Commande /help
     if (lowText.startsWith('/help') || lowText.startsWith('/aide')) {
       const help = `🤖 *Aide WP-Autopublish*
 
-/post [nb] [site] [brouillon] : Publie X articles (optionnel: en brouillon)
+/post [nb] [site] [brouillon] : Publie X articles
+/direct [site] : Publie un article à partir de votre texte
 /supprimer [lien] : Met l'article à la corbeille WP
 /brouillon [lien] : Repasse l'article en brouillon WP
 /sites : Liste vos sites connectés
 /status : État des dernières requêtes
-/vider-historique : Vide l'historique des requêtes WhatsApp
+/vider-historique : Vide l'historique WhatsApp
 
 Exemple : \`/post 5 iBusiness brouillon\``;
       await sendWhatsAppMessage(instanceName, remoteJid, help);
@@ -99,7 +158,7 @@ Exemple : \`/post 5 iBusiness brouillon\``;
     }
 
     // 5. Commande /supprimer <lien>
-    const deleteMatch = text.match(/^(?:\/supprimer|supprimer)\s+(https?:\/\/[^\s]+)/i);
+    const deleteMatch = text.match(/^\/supprimer\s+(https?:\/\/[^\s]+)/i);
     if (deleteMatch) {
       const targetUrl = deleteMatch[1].trim();
       const log = await prisma.articleLog.findFirst({
@@ -122,7 +181,7 @@ Exemple : \`/post 5 iBusiness brouillon\``;
     }
 
     // 6. Commande /brouillon <lien>
-    const draftMatch = text.match(/^(?:\/brouillon|brouillon)\s+(https?:\/\/[^\s]+)/i);
+    const draftMatch = text.match(/^\/brouillon\s+(https?:\/\/[^\s]+)/i);
     if (draftMatch) {
       const targetUrl = draftMatch[1].trim();
       const log = await prisma.articleLog.findFirst({
@@ -144,8 +203,33 @@ Exemple : \`/post 5 iBusiness brouillon\``;
       return NextResponse.json({ status: 'drafted' });
     }
 
-    // 7. Commande /post (ou ancienne syntaxe)
-    const postMatch = text.match(/^\/post\s+(\d+)\s+(.+?)(?:\s+(brouillon|draft))?$/i) || text.match(/^(?:post|publie|lancer|go)\s+(\d+)\s+(.+?)(?:\s+(brouillon|draft))?$/i);
+    // 7. Commande /direct [site]
+    const directMatch = text.match(/^\/direct\s+(.+)/i);
+    if (directMatch) {
+      const siteQuery = directMatch[1].trim();
+      const websites = await prisma.website.findMany();
+      const website = websites.find(w => 
+        w.name.toLowerCase().includes(siteQuery.toLowerCase()) || 
+        siteQuery.toLowerCase().includes(w.name.toLowerCase())
+      );
+
+      if (!website) {
+        await sendWhatsAppMessage(instanceName, remoteJid, `❌ Site "${siteQuery}" non trouvé.`);
+        return NextResponse.json({ status: 'site_not_found' });
+      }
+
+      await prisma.whatsAppSession.upsert({
+        where: { senderJid: remoteJid },
+        update: { step: 'WAITING_FOR_TEXT', websiteId: website.id, data: {} },
+        create: { senderJid: remoteJid, step: 'WAITING_FOR_TEXT', websiteId: website.id, data: {} }
+      });
+
+      await sendWhatsAppMessage(instanceName, remoteJid, `📝 *Mode Direct pour ${website.name}*\n\nVeuillez envoyer le texte de votre article (il sera reformulé et formaté par l'IA).`);
+      return NextResponse.json({ status: 'direct_mode_started' });
+    }
+
+    // 8. Commande /post (ou ancienne syntaxe)
+    const postMatch = text.match(/^\/post\s+(\d+)\s+(.+?)(?:\s+(brouillon|draft))?$/i);
     
     if (postMatch) {
       const count = Math.min(parseInt(postMatch[1]), 20); // Cap à 20 articles
