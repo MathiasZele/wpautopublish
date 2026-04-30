@@ -21,10 +21,14 @@ export async function POST(req: NextRequest) {
     const message = body.data;
     const remoteJid = message.key.remoteJid;
     
-    // Détection récursive de l'image pour gérer ephemeralMessage, viewOnceMessage, etc.
+    // Détection récursive de l'image pour gérer ephemeralMessage, viewOnceMessage, documentMessage, etc.
     const findImageMessage = (msg: any): any => {
       if (!msg) return null;
       if (msg.imageMessage) return msg.imageMessage;
+      // Cas où l'image est envoyée en tant que document (fichier)
+      if (msg.documentMessage && msg.documentMessage.mimetype?.startsWith('image/')) {
+        return msg.documentMessage;
+      }
       if (msg.viewOnceMessage?.message) return findImageMessage(msg.viewOnceMessage.message);
       if (msg.ephemeralMessage?.message) return findImageMessage(msg.ephemeralMessage.message);
       return null;
@@ -33,10 +37,11 @@ export async function POST(req: NextRequest) {
     const imageMsg = findImageMessage(message.message);
     const isImage = !!imageMsg;
     
-    // Extraction du texte (depuis conversation, message étendu ou caption d'image)
+    // Extraction du texte (depuis conversation, message étendu ou caption d'image/doc)
     const text = message.message?.conversation || 
                  message.message?.extendedTextMessage?.text || 
                  imageMsg?.caption ||
+                 imageMsg?.fileName || // Pour les documents
                  '';
     
     console.log('--- NEW MESSAGE ---');
@@ -47,9 +52,11 @@ export async function POST(req: NextRequest) {
       console.log('Message structure:', JSON.stringify(message.message, null, 2));
     }
 
-
-    // Si pas de texte ET pas d'image, on ignore
-    if (!text && !isImage) return NextResponse.json({ status: 'no_content' });
+    // Si pas de texte ET pas d'image, on ignore (permet de laisser passer les images sans texte)
+    if (!text && !isImage) {
+      console.log('Ignoring message: no text and no image detected');
+      return NextResponse.json({ status: 'no_content' });
+    }
 
     // Security: Allowlist — check against DB-managed allowed numbers
     console.log('Checking allowlist...');
