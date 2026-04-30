@@ -7,7 +7,9 @@ import { assertPublicUrl, UnsafeUrlError } from '@/lib/safeUrl';
 
 const schema = z.object({
   websiteId: z.string().min(1),
-  topic: z.string().min(3),
+  topic: z.string().optional(),
+  title: z.string().min(3).optional(),
+  content: z.string().min(10).optional(),
   provider: z.string().optional(),
   imageUrl: z.string().url().optional(),
   categoryIds: z.array(z.number().int()).optional(),
@@ -41,6 +43,8 @@ export async function POST(req: Request) {
     websiteId: site.id,
     mode: 'MANUAL',
     manualInput: parsed.data.topic,
+    title: parsed.data.title,
+    content: parsed.data.content,
     provider: parsed.data.provider,
     manualImageUrl: parsed.data.imageUrl,
     categoryIds: parsed.data.categoryIds,

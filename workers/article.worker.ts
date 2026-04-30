@@ -107,7 +107,10 @@ function mapSource(a: NewsArticle, keepNewsContext: boolean, overrideTopic?: str
 export const articleWorker = new Worker<ArticleJobData>(
   'article-generation',
   async (job: Job<ArticleJobData>) => {
-    const { websiteId, mode, manualInput, manualImageUrl, articleIndex, categoryIds, autoCategorize, whatsAppRequestId, provider } = job.data;
+    const { 
+      websiteId, mode, manualInput, manualImageUrl, title, content, 
+      articleIndex, categoryIds, autoCategorize, whatsAppRequestId, provider 
+    } = job.data;
     const idx = articleIndex ?? 0;
 
     const website = await prisma.website.findUnique({
@@ -117,9 +120,57 @@ export const articleWorker = new Worker<ArticleJobData>(
     if (!website || !website.profile) throw new Error('Site ou profil introuvable');
 
     const profile = website.profile;
-    const requireImage = profile.autoImage; // true = échec si pas d'image, false = post sans image
+    const requireImage = profile.autoImage;
 
-    // ─── Résolution de la source + image ────────────────────────────────────
+    // ─── Direct Post Bypass ──────────────────────────────────────────────────
+    if (title && content) {
+      console.log('Direct post detected, skipping AI generation...');
+      
+      let finalImageUrl: string | undefined = undefined;
+      if (manualImageUrl) {
+        try {
+          finalImageUrl = await uploadImageFromUrl(manualImageUrl);
+        } catch (e) {
+          console.warn('Failed to upload direct image:', e);
+        }
+      }
+
+      const wpResult = await publishToWordPress(website, {
+        title,
+        content,
+        categories: categoryIds,
+        imageUrl: finalImageUrl,
+      });
+
+      await prisma.articleLog.create({
+        data: {
+          websiteId: website.id,
+          title,
+          wpPostId: wpResult.id,
+          wpPostUrl: wpResult.url,
+          status: 'SUCCESS',
+          mode: 'MANUAL',
+          imageUrl: finalImageUrl,
+          categoryIds: categoryIds || [],
+          publishedAt: new Date(),
+        },
+      });
+
+      // Update WhatsApp request if needed
+      if (whatsAppRequestId) {
+        await prisma.whatsAppRequest.update({
+          where: { id: whatsAppRequestId },
+          data: {
+            successCount: { increment: 1 },
+            articleLinks: { push: wpResult.url }
+          }
+        });
+      }
+
+      return { success: true, url: wpResult.url };
+    }
+
+    // ─── Résolution de la source + image (Standard Mode) ────────────────────
     let topic = manualInput || (profile.topics.length > 0 ? profile.topics[idx % profile.topics.length] : 'Actualité');
     let resolvedSource: ResolvedSource | null = null;
     let candidateImage: string | undefined = manualImageUrl;

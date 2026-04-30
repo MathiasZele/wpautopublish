@@ -6,6 +6,8 @@ export interface ArticleJobData {
   mode: 'AUTO' | 'MANUAL';
   manualInput?: string;
   manualImageUrl?: string;
+  title?: string;
+  content?: string;
   articleIndex?: number;
   categoryIds?: number[];
   autoCategorize?: boolean;
