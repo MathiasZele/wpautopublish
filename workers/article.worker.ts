@@ -112,7 +112,7 @@ export const articleWorker = new Worker<ArticleJobData>(
   async (job: Job<ArticleJobData>) => {
     const { 
       websiteId, mode, manualInput, manualImageUrl, title, content, 
-      articleIndex, categoryIds, autoCategorize, whatsAppRequestId, provider 
+      articleIndex, categoryIds, autoCategorize, draftMode, whatsAppRequestId, provider 
     } = job.data;
     const idx = articleIndex ?? 0;
 
@@ -142,7 +142,7 @@ export const articleWorker = new Worker<ArticleJobData>(
         website,
         title,
         content,
-        status: 'publish',
+        status: draftMode ? 'draft' : 'publish',
         yoast_title: title,
         yoast_metadesc: '',
         yoast_focuskw: '',
@@ -240,7 +240,7 @@ export const articleWorker = new Worker<ArticleJobData>(
       }
     }
 
-    // ─── Génération de l'article ────────────────────────────────────────────
+    const websiteTheme = profile.topics.join(', ') || website.name;
     const { system, user } = buildArticlePrompt({
       topic,
       tone: profile.tone,
@@ -248,6 +248,7 @@ export const articleWorker = new Worker<ArticleJobData>(
       customPrompt: profile.customPrompt ?? undefined,
       newsContext: resolvedSource?.newsContext,
       availableCategories,
+      websiteTheme,
     });
 
     const completion = await openai.chat.completions.create({
@@ -295,7 +296,7 @@ export const articleWorker = new Worker<ArticleJobData>(
       yoast_metadesc: seo.metadesc,
       yoast_focuskw: seo.focuskw,
       featured_image_url: cloudinaryUrl,
-      status: 'publish',
+      status: draftMode ? 'draft' : 'publish',
       categories: finalCategoryIds,
       tags: seo.tags,
     });

@@ -18,18 +18,25 @@ export function buildArticlePrompt(params: {
   customPrompt?: string;
   newsContext?: string;
   availableCategories?: { id: number; name: string }[];
+  websiteTheme?: string;
 }): { system: string; user: string } {
   const categoryInstruction = params.availableCategories?.length
     ? `\nChoisis 1 à 3 IDs de catégories parmi cette liste :\n${params.availableCategories.map(c => `- ID: ${c.id}, Nom: ${c.name}`).join('\n')}`
     : '';
 
+  const themeInstruction = params.websiteTheme
+    ? `\nTHÉMATIQUE STRICTE : L'article (ton, vocabulaire, angle) DOIT impérativement respecter cette thématique : ${params.websiteTheme}. Ne dévie pas du sujet principal du site.`
+    : '';
+
   const system = `Tu es un rédacteur web expert SEO.
-Tu rédiges des articles en ${params.language}, au ton ${params.tone}.
+Tu rédiges des articles au ton ${params.tone}.
+TRADUCTION STRICTE OBLIGATOIRE : L'intégralité du contenu, Y COMPRIS LE TITRE (title), le meta desc, les tags et le texte de l'article DOIT impérativement être rédigé en ${params.language}. Si la source est dans une autre langue, traduis toutes les informations.
 Format de sortie OBLIGATOIRE : HTML propre uniquement.
 Structure : <h2> pour les parties, <h3> pour les sous-parties, <ul><li> pour les listes.
 Aucun markdown. Uniquement le contenu de l'article, sans balises <html> <body> <head>.
+${themeInstruction}
 ${categoryInstruction}
-Génère aussi 3 à 5 tags (étiquettes) pertinents pour l'article.
+Génère aussi 3 à 5 tags (étiquettes) pertinents pour l'article en ${params.language}.
 À la fin, retourne un objet JSON sur UNE seule ligne avec ce format exact :
 SEO_META:{"title":"...","metadesc":"...","focuskw":"...","categoryIds":[...],"tags":["..."]}
 ${params.customPrompt || ''}`.trim();

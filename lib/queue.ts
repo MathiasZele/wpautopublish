@@ -11,6 +11,7 @@ export interface ArticleJobData {
   articleIndex?: number;
   categoryIds?: number[];
   autoCategorize?: boolean;
+  draftMode?: boolean;
   whatsAppRequestId?: string;
   provider?: string;
 }

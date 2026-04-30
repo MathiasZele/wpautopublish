@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getArticleQueue } from '@/lib/queue';
 import { sendWhatsAppMessage } from '@/lib/evolution';
+import { changeWordPressPostStatus } from '@/lib/wordpress';
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,11 +47,14 @@ export async function POST(req: NextRequest) {
     if (lowText.startsWith('/help') || lowText.startsWith('/aide')) {
       const help = `🤖 *Aide WP-Autopublish*
 
-/post [nb] [site] : Publie X articles
+/post [nb] [site] [brouillon] : Publie X articles (optionnel: en brouillon)
+/supprimer [lien] : Met l'article à la corbeille WP
+/brouillon [lien] : Repasse l'article en brouillon WP
 /sites : Liste vos sites connectés
 /status : État des dernières requêtes
+/vider-historique : Vide l'historique des requêtes WhatsApp
 
-Exemple : \`/post 5 iBusiness\``;
+Exemple : \`/post 5 iBusiness brouillon\``;
       await sendWhatsAppMessage(instanceName, remoteJid, help);
       return NextResponse.json({ status: 'help_sent' });
     }
@@ -87,12 +91,66 @@ Exemple : \`/post 5 iBusiness\``;
       return NextResponse.json({ status: 'status_sent' });
     }
 
-    // 4. Commande /post (ou ancienne syntaxe)
-    const postMatch = text.match(/^\/post\s+(\d+)\s+(.+)/i) || text.match(/^(?:post|publie|lancer|go)\s+(\d+)\s+(.+)/i);
+    // 4. Commande /vider-historique
+    if (lowText.startsWith('/vider-historique')) {
+      const deleted = await prisma.whatsAppRequest.deleteMany({});
+      await sendWhatsAppMessage(instanceName, remoteJid, `🧹 Historique WhatsApp vidé (${deleted.count} requêtes supprimées).`);
+      return NextResponse.json({ status: 'history_cleared' });
+    }
+
+    // 5. Commande /supprimer <lien>
+    const deleteMatch = text.match(/^(?:\/supprimer|supprimer)\s+(https?:\/\/[^\s]+)/i);
+    if (deleteMatch) {
+      const targetUrl = deleteMatch[1].trim();
+      const log = await prisma.articleLog.findFirst({
+        where: { wpPostUrl: targetUrl },
+        include: { website: true }
+      });
+
+      if (!log || !log.wpPostId) {
+        await sendWhatsAppMessage(instanceName, remoteJid, `❌ Impossible de trouver cet article dans l'historique.`);
+        return NextResponse.json({ status: 'not_found' });
+      }
+
+      const success = await changeWordPressPostStatus(log.website, log.wpPostId, 'trash');
+      if (success) {
+        await sendWhatsAppMessage(instanceName, remoteJid, `🗑️ L'article a été mis à la corbeille avec succès !`);
+      } else {
+        await sendWhatsAppMessage(instanceName, remoteJid, `⚠️ Échec de la suppression sur WordPress.`);
+      }
+      return NextResponse.json({ status: 'deleted' });
+    }
+
+    // 6. Commande /brouillon <lien>
+    const draftMatch = text.match(/^(?:\/brouillon|brouillon)\s+(https?:\/\/[^\s]+)/i);
+    if (draftMatch) {
+      const targetUrl = draftMatch[1].trim();
+      const log = await prisma.articleLog.findFirst({
+        where: { wpPostUrl: targetUrl },
+        include: { website: true }
+      });
+
+      if (!log || !log.wpPostId) {
+        await sendWhatsAppMessage(instanceName, remoteJid, `❌ Impossible de trouver cet article dans l'historique.`);
+        return NextResponse.json({ status: 'not_found' });
+      }
+
+      const success = await changeWordPressPostStatus(log.website, log.wpPostId, 'draft');
+      if (success) {
+        await sendWhatsAppMessage(instanceName, remoteJid, `📝 L'article a été repassé en brouillon avec succès !`);
+      } else {
+        await sendWhatsAppMessage(instanceName, remoteJid, `⚠️ Échec de la mise en brouillon sur WordPress.`);
+      }
+      return NextResponse.json({ status: 'drafted' });
+    }
+
+    // 7. Commande /post (ou ancienne syntaxe)
+    const postMatch = text.match(/^\/post\s+(\d+)\s+(.+?)(?:\s+(brouillon|draft))?$/i) || text.match(/^(?:post|publie|lancer|go)\s+(\d+)\s+(.+?)(?:\s+(brouillon|draft))?$/i);
     
     if (postMatch) {
       const count = Math.min(parseInt(postMatch[1]), 20); // Cap à 20 articles
       const siteQuery = postMatch[2].trim();
+      const isDraftMode = !!postMatch[3];
 
       const websites = await prisma.website.findMany();
       const website = websites.find(w => 
@@ -121,11 +179,14 @@ Exemple : \`/post 5 iBusiness\``;
           websiteId: website.id,
           mode: 'AUTO',
           autoCategorize: true,
-          whatsAppRequestId: waRequest.id
+          draftMode: isDraftMode,
+          whatsAppRequestId: waRequest.id,
+          articleIndex: i
         });
       }
 
-      await sendWhatsAppMessage(instanceName, remoteJid, `✅ Lancement de *${count} articles* pour *${website.name}*.\n\nJe vous enverrai les liens une fois terminé. 🚀`);
+      const statusStr = isDraftMode ? "en *brouillon*" : "en publication direct";
+      await sendWhatsAppMessage(instanceName, remoteJid, `✅ Lancement de *${count} articles* pour *${website.name}* (${statusStr}).\n\nJe vous enverrai les liens une fois terminé. 🚀`);
       return NextResponse.json({ status: 'success' });
     }
 

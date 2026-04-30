@@ -202,3 +202,39 @@ export async function fetchWordPressCategories(
 
   return all.sort((a, b) => a.name.localeCompare(b.name));
 }
+
+export async function changeWordPressPostStatus(
+  website: Website,
+  postId: number,
+  status: 'draft' | 'trash'
+): Promise<boolean> {
+  const baseUrl = website.url.replace(/\/$/, '');
+  const username = website.wpUsername;
+  const appPassword = decrypt(website.wpAppPassword);
+  const auth = `Basic ${Buffer.from(`${username}:${appPassword}`).toString('base64')}`;
+
+  let url = `${baseUrl}/wp-json/wp/v2/posts/${postId}`;
+  let method = 'POST';
+  let body = JSON.stringify({ status });
+
+  if (status === 'trash') {
+    method = 'DELETE'; // WP API uses DELETE to move to trash
+    body = ''; // DELETE requests usually don't need body for this
+  }
+
+  const res = await fetch(url, {
+    method,
+    headers: {
+      Authorization: auth,
+      'Content-Type': 'application/json',
+    },
+    body: body ? body : undefined,
+  });
+
+  if (!res.ok) {
+    console.error(`Failed to change status of post ${postId} to ${status}: ${res.status} ${res.statusText}`);
+    return false;
+  }
+
+  return true;
+}
