@@ -125,15 +125,14 @@ export async function fetchSiteContext(
     }),
   ]);
 
-  if (!rootRes.ok) throw new Error(`WP root ${rootRes.status}`);
-
-  const root = (await rootRes.json()) as {
-    name?: string;
-    description?: string;
-    url?: string;
-    home?: string;
-    timezone_string?: string;
-  };
+  // If the root endpoint is blocked (403/401), degrade gracefully instead of throwing.
+  // The auto-generate flow can still work with partial context.
+  let root: { name?: string; description?: string; url?: string; home?: string } = {};
+  if (rootRes.ok) {
+    root = (await rootRes.json()) as typeof root;
+  } else {
+    console.warn(`fetchSiteContext: root WP JSON returned ${rootRes.status} for ${baseUrl} — using fallback context`);
+  }
 
   let categories: { name: string; count: number }[] = [];
   if (catsRes.ok) {
@@ -150,13 +149,14 @@ export async function fetchSiteContext(
   }
 
   return {
-    name: root.name ?? '',
+    name: root.name ?? new URL(baseUrl).hostname,
     description: root.description ?? '',
     url: root.home ?? root.url ?? baseUrl,
     categories,
     recentTitles,
   };
 }
+
 
 function stripHtml(s: string): string {
   return s
