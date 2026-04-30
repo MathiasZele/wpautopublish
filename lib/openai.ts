@@ -19,6 +19,7 @@ export function buildArticlePrompt(params: {
   newsContext?: string;
   availableCategories?: { id: number; name: string }[];
   websiteTheme?: string;
+  manualInput?: string;
 }): { system: string; user: string } {
   const categoryInstruction = params.availableCategories?.length
     ? `\nChoisis 1 à 3 IDs de catégories parmi cette liste :\n${params.availableCategories.map(c => `- ID: ${c.id}, Nom: ${c.name}`).join('\n')}`
@@ -28,7 +29,11 @@ export function buildArticlePrompt(params: {
     ? `\nTHÉMATIQUE STRICTE : L'article (ton, vocabulaire, angle) DOIT impérativement respecter cette thématique : ${params.websiteTheme}. Ne dévie pas du sujet principal du site.`
     : '';
 
-  const system = `Tu es un rédacteur web expert SEO.
+  const websiteTheme = params.websiteTheme || 'General News';
+  const categoryNames = params.availableCategories?.map(c => c.name).join(', ') || 'General';
+
+  if (!params.manualInput) {
+    const system = `Tu es un rédacteur web expert SEO.
 Tu rédiges des articles au ton ${params.tone}.
 TRADUCTION STRICTE OBLIGATOIRE : L'intégralité du contenu, Y COMPRIS LE TITRE (title), le meta desc, les tags et le texte de l'article DOIT impérativement être rédigé en ${params.language}. Si la source est dans une autre langue, traduis toutes les informations.
 Format de sortie OBLIGATOIRE : HTML propre uniquement.
