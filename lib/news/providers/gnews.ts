@@ -10,6 +10,7 @@ export class GNewsProvider extends NewsProvider {
     const params = new URLSearchParams({
       q: opts.query,
       max: String(opts.pageSize ?? 10),
+      page: String(opts.page ?? 1),
       lang: opts.language ?? 'fr',
       apikey: apiKey,
     });

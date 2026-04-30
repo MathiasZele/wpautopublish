@@ -67,10 +67,11 @@ async function findArticleWithImage(opts: {
 }): Promise<NewsArticle | null> {
   const { query, language, maxAgeHours, index, provider, existingUrls } = opts;
 
-  const attempts: { query: string; maxAgeHours?: number; pageSize: number }[] = [
-    { query, maxAgeHours, pageSize: 10 },
-    { query, pageSize: 20 },
-    { query: looserQuery(query), pageSize: 20 },
+  const page = Math.floor(index / 100) + 1;
+  const attempts: { query: string; maxAgeHours?: number; pageSize: number; page?: number }[] = [
+    { query, maxAgeHours, pageSize: 100, page },
+    { query, pageSize: 100, page },
+    { query: looserQuery(query), pageSize: 100, page },
   ];
 
   for (const a of attempts) {
@@ -79,6 +80,7 @@ async function findArticleWithImage(opts: {
       const articles = await newsOrchestrator.search({
         query: a.query,
         pageSize: a.pageSize,
+        page: a.page,
         language,
         maxAgeHours: a.maxAgeHours,
       }, provider);

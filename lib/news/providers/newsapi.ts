@@ -10,6 +10,7 @@ export class NewsApiProvider extends NewsProvider {
     const params = new URLSearchParams({
       q: opts.query,
       pageSize: String(opts.pageSize ?? 10),
+      page: String(opts.page ?? 1),
       sortBy: 'publishedAt',
       language: opts.language ?? 'fr',
     });

@@ -11,6 +11,7 @@ export interface NewsArticle {
 export interface NewsSearchOptions {
   query: string;
   pageSize?: number;
+  page?: number;
   language?: string;
   maxAgeHours?: number;
 }

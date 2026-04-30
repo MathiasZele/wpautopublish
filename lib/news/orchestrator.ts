@@ -33,11 +33,19 @@ export class NewsOrchestrator {
     console.log('[Orchestrator] Running multi-provider search (Auto mode)');
     
     // On lance les recherches en parallèle sur les APIs configurées
-    // On ne prend que celles qui ont une clé API (le provider retourne [] sinon)
     const results = await Promise.all(this.providers.map(p => p.search(opts)));
     
-    // Aplatir les résultats
-    const allArticles = results.flat();
+    // Entrelacer les résultats (Interleaving) pour garantir une bonne rotation
+    // ex: [API1_1, API2_1, API3_1, API1_2, API2_2...]
+    const allArticles: NewsArticle[] = [];
+    const maxLength = Math.max(...results.map(r => r.length), 0);
+    for (let i = 0; i < maxLength; i++) {
+      for (const providerResults of results) {
+        if (i < providerResults.length) {
+          allArticles.push(providerResults[i]);
+        }
+      }
+    }
 
     // 3. Dédoublonnage (Idée 3)
     return this.deduplicate(allArticles);

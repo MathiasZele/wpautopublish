@@ -7,10 +7,14 @@ export class MediastackProvider extends NewsProvider {
     const apiKey = process.env.MEDIASTACK_API_KEY;
     if (!apiKey) return [];
 
+    const pageSize = opts.pageSize ?? 10;
+    const offset = ((opts.page ?? 1) - 1) * pageSize;
+    
     const params = new URLSearchParams({
       access_key: apiKey,
       keywords: opts.query,
-      limit: String(opts.pageSize ?? 10),
+      limit: String(pageSize),
+      offset: String(offset),
       languages: opts.language ?? 'fr',
       sort: 'published_desc',
     });

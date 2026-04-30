@@ -10,6 +10,7 @@ export class GuardianProvider extends NewsProvider {
     const params = new URLSearchParams({
       q: opts.query,
       'page-size': String(opts.pageSize ?? 10),
+      page: String(opts.page ?? 1),
       'api-key': apiKey,
       'show-fields': 'thumbnail,trailText',
     });
