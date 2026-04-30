@@ -151,7 +151,7 @@ export const articleWorker = new Worker<ArticleJobData>(
         data: {
           websiteId: website.id,
           title,
-          wpPostId: wpResult.id,
+          wpPostId: wpResult.post_id,
           wpPostUrl: wpResult.url,
           status: 'SUCCESS',
           mode: 'MANUAL',
