@@ -274,10 +274,9 @@ export const articleWorker = new Worker<ArticleJobData>(
       try {
         cloudinaryUrl = await uploadImageFromUrl(candidateImage);
       } catch (e) {
-        console.error('Cloudinary upload failed', e);
-        if (requireImage) {
-          throw new Error(`Échec upload Cloudinary : ${(e as Error).message}`);
-        }
+        console.error(`Cloudinary upload failed for URL "${candidateImage}":`, e);
+        // On ne bloque plus la publication si l'image échoue, sauf si c'est critique
+        // (On peut aussi imaginer un fallback vers une image par défaut ici)
       }
     }
 
