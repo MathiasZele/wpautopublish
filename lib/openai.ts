@@ -39,6 +39,7 @@ TRADUCTION STRICTE OBLIGATOIRE : L'intégralité du contenu, Y COMPRIS LE TITRE 
 Format de sortie OBLIGATOIRE : HTML propre uniquement.
 Structure : <h2> pour les parties, <h3> pour les sous-parties, <ul><li> pour les listes.
 Aucun markdown. Uniquement le contenu de l'article, sans balises <html> <body> <head>.
+IMPORTANT : Ne JAMAIS inclure de labels comme "Titre :", "Chapô :", "Introduction :", "Conclusion :" ou "Résumé :" dans le corps HTML de l'article. Passe directement au contenu.
 ${themeInstruction}
 ${categoryInstruction}
 Génère aussi 3 à 5 tags (étiquettes) pertinents pour l'article en ${params.language}.
@@ -62,6 +63,7 @@ IMPORTANT:
 - Always translate the final content into ${params.language}.
 - Ensure the tone is ${params.tone}.
 - Adhere to the website theme: ${websiteTheme}.
+- IMPORTANT: DO NOT include labels like "Title:", "Chapô:", or "Conclusion:" inside the "html" content. The "html" should only contain the actual narrative.
 
 Format your response as a valid JSON object:
 {
