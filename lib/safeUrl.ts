@@ -41,11 +41,13 @@ export class UnsafeUrlError extends Error {
  * Résout le DNS pour bloquer les rebinding attacks vers des IPs privées.
  */
 export async function assertPublicUrl(rawUrl: string): Promise<URL> {
+  const trimmed = (rawUrl || '').trim();
   let url: URL;
   try {
-    url = new URL(rawUrl);
+    url = new URL(trimmed);
   } catch {
-    throw new UnsafeUrlError('format URL invalide');
+    console.error(`Invalid URL format: "${trimmed}"`);
+    throw new UnsafeUrlError(`format URL invalide : "${trimmed.slice(0, 50)}..."`);
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
