@@ -321,8 +321,10 @@ articleWorker.on('failed', async (job, err) => {
       });
 
       if (updatedRequest.successCount + updatedRequest.failedCount >= updatedRequest.totalCount) {
+        const website = await prisma.website.findUnique({ where: { id: job.data.websiteId } });
+        const websiteName = website ? website.name : 'le site';
         const links = updatedRequest.articleLinks.map((l) => `🔗 ${l}`).join('\n');
-        const message = `🏁 *Batch terminé pour ${website.name}*
+        const message = `🏁 *Batch terminé pour ${websiteName}*
 
 ✅ Réussis: ${updatedRequest.successCount}
 ❌ Échecs: ${updatedRequest.failedCount}
