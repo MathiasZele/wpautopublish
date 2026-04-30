@@ -13,7 +13,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'ignored' });
     }
 
+    const instanceName = body.instance;
     console.log('Webhook received:', body.event, instanceName);
+
     const message = body.data;
     const remoteJid = message.key.remoteJid;
     const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
