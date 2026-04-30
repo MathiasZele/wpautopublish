@@ -214,11 +214,11 @@ Exemple : \`/post 5 iBusiness brouillon\``;
         return NextResponse.json({ status: 'not_found' });
       }
 
-      const success = await changeWordPressPostStatus(log.website, log.wpPostId, 'trash');
-      if (success) {
+      const result = await changeWordPressPostStatus(log.website, log.wpPostId, 'trash');
+      if (result.success) {
         await sendWhatsAppMessage(instanceName, remoteJid, `🗑️ L'article a été mis à la corbeille avec succès !`);
       } else {
-        await sendWhatsAppMessage(instanceName, remoteJid, `⚠️ Échec de la suppression sur WordPress.`);
+        await sendWhatsAppMessage(instanceName, remoteJid, `⚠️ Échec de la suppression sur WordPress. (Erreur: ${result.error})`);
       }
       return NextResponse.json({ status: 'deleted' });
     }
@@ -243,11 +243,11 @@ Exemple : \`/post 5 iBusiness brouillon\``;
         return NextResponse.json({ status: 'not_found' });
       }
 
-      const success = await changeWordPressPostStatus(log.website, log.wpPostId, 'draft');
-      if (success) {
+      const result = await changeWordPressPostStatus(log.website, log.wpPostId, 'draft');
+      if (result.success) {
         await sendWhatsAppMessage(instanceName, remoteJid, `📝 L'article a été repassé en brouillon avec succès !`);
       } else {
-        await sendWhatsAppMessage(instanceName, remoteJid, `⚠️ Échec de la mise en brouillon sur WordPress.`);
+        await sendWhatsAppMessage(instanceName, remoteJid, `⚠️ Échec de la mise en brouillon sur WordPress. (Erreur: ${result.error})`);
       }
       return NextResponse.json({ status: 'drafted' });
     }
@@ -272,11 +272,11 @@ Exemple : \`/post 5 iBusiness brouillon\``;
         return NextResponse.json({ status: 'not_found' });
       }
 
-      const success = await changeWordPressPostStatus(log.website, log.wpPostId, 'publish');
-      if (success) {
+      const result = await changeWordPressPostStatus(log.website, log.wpPostId, 'publish');
+      if (result.success) {
         await sendWhatsAppMessage(instanceName, remoteJid, `✅ L'article a été publié avec succès !`);
       } else {
-        await sendWhatsAppMessage(instanceName, remoteJid, `⚠️ Échec de la publication sur WordPress.`);
+        await sendWhatsAppMessage(instanceName, remoteJid, `⚠️ Échec de la publication sur WordPress. (Erreur: ${result.error})`);
       }
       return NextResponse.json({ status: 'published' });
     }

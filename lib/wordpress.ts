@@ -208,7 +208,7 @@ export async function changeWordPressPostStatus(
   website: Website,
   postId: number,
   status: 'draft' | 'trash' | 'publish'
-): Promise<boolean> {
+): Promise<{ success: boolean; error?: string }> {
   const baseUrl = website.url.replace(/\/$/, '');
   const username = website.wpUsername;
   const appPassword = decrypt(website.wpAppPassword);
@@ -232,11 +232,12 @@ export async function changeWordPressPostStatus(
   });
 
   if (!res.ok) {
-    console.error(`Failed to change status of post ${postId} to ${status}: ${res.status} ${res.statusText}`);
-    return false;
+    const errorText = await res.text().catch(() => res.statusText);
+    console.error(`Failed to change status of post ${postId} to ${status}: ${res.status} ${errorText}`);
+    return { success: false, error: `${res.status} ${res.statusText}` };
   }
 
-  return true;
+  return { success: true };
 }
 
 export async function getWordPressPostInfo(
