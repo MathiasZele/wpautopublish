@@ -108,6 +108,7 @@ model Profile {
   maxArticleAgeHours Int      @default(72)
   defaultCategoryIds Int[]    @default([])
   autoImage          Boolean  @default(true)
+  preferredProvider  String   @default("AUTO")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -130,6 +131,7 @@ model ArticleLog {
   errorMessage  String?       @db.Text
   sourceUrl     String?
   sourceName    String?
+  providerName  String?
   imageUrl      String?
   categoryIds   Int[]         @default([])
   tags          String[]      @default([])

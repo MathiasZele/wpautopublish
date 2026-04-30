@@ -229,20 +229,27 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
                     </div>
                   </td>
                   <td className="px-4 py-4 text-xs">
-                    {log.sourceUrl && log.sourceName ? (
-                      <a
-                        href={log.sourceUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-blue-600 hover:underline"
-                        title={log.sourceName}
-                      >
-                        <Newspaper size={12} className="flex-shrink-0" />
-                        <span className="truncate max-w-[80px]">{log.sourceName}</span>
-                      </a>
-                    ) : (
-                      <span className="text-gray-300 italic">Direct</span>
-                    )}
+                    <div className="flex flex-col gap-1">
+                      {log.sourceUrl && log.sourceName ? (
+                        <a
+                          href={log.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-blue-600 hover:underline"
+                          title={log.sourceName}
+                        >
+                          <Newspaper size={12} className="flex-shrink-0" />
+                          <span className="truncate max-w-[80px]">{log.sourceName}</span>
+                        </a>
+                      ) : (
+                        <span className="text-gray-300 italic">Direct</span>
+                      )}
+                      {log.providerName && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-100 self-start">
+                          {log.providerName}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-4 text-xs">
                     <div className="text-gray-600 font-mono text-[10px]">{(log.inputTokens + log.outputTokens).toLocaleString()} tokens</div>

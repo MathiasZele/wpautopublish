@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Plus, ExternalLink } from 'lucide-react';
 import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { SiteRowActions } from '@/components/sites/SiteRowActions';
@@ -9,8 +10,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function SitesPage() {
   const session = await auth();
+  if (!session?.user) redirect('/login');
+
   const sites = await prisma.website.findMany({
-    where: { userId: session!.user.id },
+    where: { userId: session.user.id },
     include: { profile: true, _count: { select: { articles: true } } },
     orderBy: { createdAt: 'desc' },
   });

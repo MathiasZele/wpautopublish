@@ -35,7 +35,12 @@ export async function POST(req: Request) {
     for (let i = 0; i < count; i++) {
       const job = await queue.add(
         'auto',
-        { websiteId: site.id, mode: 'AUTO', articleIndex: i },
+        {
+          websiteId: site.id,
+          mode: 'AUTO',
+          articleIndex: i,
+          provider: site.profile.preferredProvider,
+        },
         { delay: i * 60_000 },
       );
       if (job.id) enqueued.push(job.id);

@@ -11,6 +11,7 @@ export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
   const [topic, setTopic] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [selectedCats, setSelectedCats] = useState<number[]>(sites[0]?.defaultCategoryIds ?? []);
+  const [provider, setProvider] = useState('AUTO');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
       body: JSON.stringify({
         websiteId,
         topic,
+        provider,
         imageUrl: imageUrl || undefined,
         categoryIds: selectedCats,
       }),
@@ -90,6 +92,24 @@ export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
         <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
           <Sparkles size={12} className="text-brand-500" />
           Si vide, l'app cherchera automatiquement une image correspondant au sujet.
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Source de l'actualité</label>
+        <select
+          value={provider}
+          onChange={(e) => setProvider(e.target.value)}
+          className="w-full px-3 py-2 border rounded-lg"
+        >
+          <option value="AUTO">🤖 Intelligent (Auto)</option>
+          <option value="NewsAPI">NewsAPI</option>
+          <option value="GNews">GNews</option>
+          <option value="Mediastack">Mediastack</option>
+          <option value="The Guardian">The Guardian</option>
+        </select>
+        <p className="text-xs text-gray-500 mt-1">
+          L'orchestrateur choisira la meilleure source ou combinera les résultats si "Auto" est sélectionné.
         </p>
       </div>
 

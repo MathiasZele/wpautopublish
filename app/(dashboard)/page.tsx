@@ -139,6 +139,14 @@ export default async function DashboardPage() {
                         </a>
                       </>
                     )}
+                    {log.providerName && (
+                      <>
+                        <span>·</span>
+                        <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">
+                          {log.providerName}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
                 {log.wpPostUrl && (

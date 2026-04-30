@@ -10,6 +10,7 @@ export interface ArticleJobData {
   categoryIds?: number[];
   autoCategorize?: boolean;
   whatsAppRequestId?: string;
+  provider?: string;
 }
 
 const globalForQueue = globalThis as unknown as {

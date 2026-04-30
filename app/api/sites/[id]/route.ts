@@ -24,6 +24,7 @@ const updateSchema = z.object({
       newsApiQuery: z.string().nullable().optional(),
       maxArticleAgeHours: z.number().int().min(1).max(8760).optional(),
       defaultCategoryIds: z.array(z.number().int()).optional(),
+      preferredProvider: z.string().optional(),
     })
     .optional(),
 });

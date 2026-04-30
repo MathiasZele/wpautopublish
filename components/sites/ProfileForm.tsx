@@ -25,6 +25,7 @@ interface ProfileFormProps {
     maxArticleAgeHours: number;
     defaultCategoryIds: number[];
     autoImage: boolean;
+    preferredProvider: string;
   };
 }
 
@@ -117,6 +118,7 @@ export function ProfileForm({ siteId, initial }: ProfileFormProps) {
       newsApiQuery: state.newsApiQuery || null,
       maxArticleAgeHours: state.maxArticleAgeHours,
       defaultCategoryIds: state.defaultCategoryIds,
+      preferredProvider: state.preferredProvider,
       topics: topicsInput
         .split(',')
         .map((s) => s.trim())
@@ -208,22 +210,35 @@ export function ProfileForm({ siteId, initial }: ProfileFormProps) {
           placeholder="tech, IA, startups"
           className="w-full px-3 py-2 border rounded-lg"
         />
-        <p className="text-xs text-gray-500 mt-1">Utilisées en mode auto si aucune requête NewsAPI ne ramène de résultat.</p>
+        <p className="text-xs text-gray-500 mt-1">Utilisées en mode auto si aucune actualité ne correspond à la requête.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium mb-1">Requête NewsAPI</label>
+        <div>
+          <label className="block text-sm font-medium mb-1">Requête NewsAPI / Orchestrateur</label>
           <input
             value={state.newsApiQuery}
             onChange={(e) => setState({ ...state, newsApiQuery: e.target.value })}
             placeholder="intelligence artificielle"
             className="w-full px-3 py-2 border rounded-lg"
           />
-          <p className="text-xs text-gray-500 mt-1">Sujets et images viendront de vrais articles trouvés.</p>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Articles datant de moins de</label>
+          <label className="block text-sm font-medium mb-1">Source de l'actualité</label>
+          <select
+            value={state.preferredProvider}
+            onChange={(e) => setState({ ...state, preferredProvider: e.target.value })}
+            className="w-full px-3 py-2 border rounded-lg"
+          >
+            <option value="AUTO">🤖 Intelligent (Auto)</option>
+            <option value="NewsAPI">NewsAPI</option>
+            <option value="GNews">GNews</option>
+            <option value="Mediastack">Mediastack</option>
+            <option value="The Guardian">The Guardian</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Articles de moins de</label>
           <select
             value={state.maxArticleAgeHours}
             onChange={(e) => setState({ ...state, maxArticleAgeHours: Number(e.target.value) })}

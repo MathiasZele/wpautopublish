@@ -6,7 +6,8 @@ import { openai, buildArticlePrompt, parseArticleResponse, calculateCost } from 
 import { publishToWordPress, fetchWordPressCategories } from '../lib/wordpress';
 import { sendWhatsAppMessage } from '../lib/evolution';
 import { decrypt } from '../lib/encryption';
-import { searchNews, type NewsArticle } from '../lib/newsapi';
+import { newsOrchestrator } from '../lib/news/orchestrator';
+import { type NewsArticle } from '../lib/news/providers/base';
 import { uploadImageFromUrl } from '../lib/cloudinary';
 import { sanitizeArticleHtml } from '../lib/sanitizeHtml';
 import type { ArticleJobData } from '../lib/queue';
@@ -22,6 +23,7 @@ interface ResolvedSource {
   newsContext?: string;
   sourceUrl: string;
   sourceName: string;
+  providerName: string;
   newsImage: string;
 }
 
@@ -60,8 +62,9 @@ async function findArticleWithImage(opts: {
   language: string;
   maxAgeHours: number;
   index: number;
+  provider?: string;
 }): Promise<NewsArticle | null> {
-  const { query, language, maxAgeHours, index } = opts;
+  const { query, language, maxAgeHours, index, provider } = opts;
 
   const attempts: { query: string; maxAgeHours?: number; pageSize: number }[] = [
     { query, maxAgeHours, pageSize: 10 },
@@ -72,16 +75,16 @@ async function findArticleWithImage(opts: {
   for (const a of attempts) {
     if (a.query !== query && a.query === '') continue;
     try {
-      const articles = await searchNews({
+      const articles = await newsOrchestrator.search({
         query: a.query,
         pageSize: a.pageSize,
         language,
         maxAgeHours: a.maxAgeHours,
-      });
+      }, provider);
       const picked = pickArticleWithImage(articles, index);
       if (picked) return picked;
     } catch (e) {
-      console.error('NewsAPI attempt failed', a, e);
+      console.error('Orchestrator attempt failed', a, e);
     }
   }
 
@@ -95,7 +98,8 @@ function mapSource(a: NewsArticle, keepNewsContext: boolean, overrideTopic?: str
       ? `Titre : ${a.title}\nDescription : ${a.description ?? ''}`
       : undefined,
     sourceUrl: a.url,
-    sourceName: a.source?.name ?? 'NewsAPI',
+    sourceName: a.sourceName,
+    providerName: a.providerName,
     newsImage: a.urlToImage!,
   };
 }
@@ -103,7 +107,7 @@ function mapSource(a: NewsArticle, keepNewsContext: boolean, overrideTopic?: str
 export const articleWorker = new Worker<ArticleJobData>(
   'article-generation',
   async (job: Job<ArticleJobData>) => {
-    const { websiteId, mode, manualInput, manualImageUrl, articleIndex, categoryIds, autoCategorize, whatsAppRequestId } = job.data;
+    const { websiteId, mode, manualInput, manualImageUrl, articleIndex, categoryIds, autoCategorize, whatsAppRequestId, provider } = job.data;
     const idx = articleIndex ?? 0;
 
     const website = await prisma.website.findUnique({
@@ -131,10 +135,9 @@ export const articleWorker = new Worker<ArticleJobData>(
         language: profile.language,
         maxAgeHours: profile.maxArticleAgeHours,
         index: idx,
+        provider,
       });
       if (article) {
-        // En AUTO : l'article NewsAPI sert aussi de contexte pour la rédaction
-        // En MANUAL : on garde le sujet utilisateur, on récupère juste image + source
         resolvedSource = mapSource(article, mode === 'AUTO', mode === 'MANUAL' ? manualInput : undefined);
         topic = resolvedSource.topic;
         if (!candidateImage) candidateImage = resolvedSource.newsImage;
@@ -243,6 +246,7 @@ export const articleWorker = new Worker<ArticleJobData>(
         estimatedCost: cost,
         sourceUrl: resolvedSource?.sourceUrl,
         sourceName: resolvedSource?.sourceName,
+        providerName: resolvedSource?.providerName,
         imageUrl: cloudinaryUrl,
         categoryIds: finalCategoryIds,
         tags: seo.tags || [],
