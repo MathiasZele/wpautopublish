@@ -169,10 +169,18 @@ export async function POST(req: NextRequest) {
 /sites : Liste vos sites connectés
 /status : État des dernières requêtes
 /vider-historique : Vide l'historique WhatsApp
+/stop : Annule l'action en cours
 
 Exemple : \`/post 5 iBusiness brouillon\``;
       await sendWhatsAppMessage(instanceName, remoteJid, help);
       return NextResponse.json({ status: 'help_sent' });
+    }
+
+    // 1.b Commande /stop
+    if (lowText.startsWith('/stop') || lowText.startsWith('/cancel')) {
+      await prisma.whatsAppSession.deleteMany({ where: { senderJid: remoteJid } });
+      await sendWhatsAppMessage(instanceName, remoteJid, "🛑 Action annulée. Session réinitialisée.");
+      return NextResponse.json({ status: 'action_stopped' });
     }
 
     // 2. Commande /sites
