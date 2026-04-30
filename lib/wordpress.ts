@@ -218,10 +218,9 @@ export async function changeWordPressPostStatus(
   let method = 'POST';
   let body = JSON.stringify({ status });
 
-  if (status === 'trash') {
-    method = 'DELETE'; // WP API uses DELETE to move to trash
-    body = ''; 
-  }
+  // Note: Both POST with { status: 'trash' } and DELETE work in WP, 
+  // but POST is generally safer against some firewall rules.
+
 
   const res = await fetch(url, {
     method,

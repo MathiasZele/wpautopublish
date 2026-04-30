@@ -197,10 +197,16 @@ Exemple : \`/post 5 iBusiness brouillon\``;
     // 5. Commande /supprimer <lien>
     const deleteMatch = text.match(/^\/supprimer\s+(https?:\/\/[^\s]+)/i);
     if (deleteMatch) {
-      const targetUrl = deleteMatch[1].trim();
+      const link = deleteMatch[1].trim();
       const log = await prisma.articleLog.findFirst({
-        where: { wpPostUrl: targetUrl },
-        include: { website: true }
+        where: {
+          OR: [
+            { wpPostUrl: { equals: link } },
+            { wpPostUrl: { contains: link } }
+          ]
+        },
+        include: { website: true },
+        orderBy: { publishedAt: 'desc' }
       });
 
       if (!log || !log.wpPostId) {
@@ -220,10 +226,16 @@ Exemple : \`/post 5 iBusiness brouillon\``;
     // 6. Commande /brouillon <lien>
     const draftMatch = text.match(/^\/brouillon\s+(https?:\/\/[^\s]+)/i);
     if (draftMatch) {
-      const targetUrl = draftMatch[1].trim();
+      const link = draftMatch[1].trim();
       const log = await prisma.articleLog.findFirst({
-        where: { wpPostUrl: targetUrl },
-        include: { website: true }
+        where: {
+          OR: [
+            { wpPostUrl: { equals: link } },
+            { wpPostUrl: { contains: link } }
+          ]
+        },
+        include: { website: true },
+        orderBy: { publishedAt: 'desc' }
       });
 
       if (!log || !log.wpPostId) {
@@ -243,10 +255,16 @@ Exemple : \`/post 5 iBusiness brouillon\``;
     // 6.b Commande /publier <lien>
     const publishMatch = text.match(/^\/publier\s+(https?:\/\/[^\s]+)/i);
     if (publishMatch) {
-      const targetUrl = publishMatch[1].trim();
+      const link = publishMatch[1].trim();
       const log = await prisma.articleLog.findFirst({
-        where: { wpPostUrl: targetUrl },
-        include: { website: true }
+        where: {
+          OR: [
+            { wpPostUrl: { equals: link } },
+            { wpPostUrl: { contains: link } }
+          ]
+        },
+        include: { website: true },
+        orderBy: { publishedAt: 'desc' }
       });
 
       if (!log || !log.wpPostId) {
@@ -266,10 +284,18 @@ Exemple : \`/post 5 iBusiness brouillon\``;
     // 6.c Commande /info <lien>
     const infoMatch = text.match(/^\/info\s+(https?:\/\/[^\s]+)/i);
     if (infoMatch) {
-      const targetUrl = infoMatch[1].trim();
+      const link = infoMatch[1].trim();
+      
+      // Recherche plus robuste : on cherche l'URL exacte ou qui contient le lien fourni
       const log = await prisma.articleLog.findFirst({
-        where: { wpPostUrl: targetUrl },
-        include: { website: true }
+        where: {
+          OR: [
+            { wpPostUrl: { equals: link } },
+            { wpPostUrl: { contains: link } }
+          ]
+        },
+        include: { website: true },
+        orderBy: { publishedAt: 'desc' }
       });
 
       if (!log || !log.wpPostId) {
