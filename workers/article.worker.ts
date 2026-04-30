@@ -352,11 +352,14 @@ ${links || '_Aucun article publié_'}`;
       }
     } else if (senderJid && instanceId) {
       // Notification directe pour /direct ou posts manuels unitaires
+      console.log(`Sending direct notification to ${senderJid} on instance ${instanceId}`);
       const message = `✅ *Article publié avec succès !*
       
 📌 *Titre :* ${seo.title || topic}
 🔗 *Lien :* ${result.url}`;
       await sendWhatsAppMessage(instanceId, senderJid, message);
+    } else {
+      console.log('No WhatsApp notification sent (no whatsAppRequestId and no senderJid/instanceId)');
     }
 
     return { post_id: result.post_id, url: result.url, cost };
