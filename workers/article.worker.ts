@@ -42,9 +42,9 @@ function looserQuery(query: string): string {
   return words.slice(0, 2).join(' ') || query;
 }
 
-function pickArticleWithImage(articles: NewsArticle[], index: number): NewsArticle | null {
+function pickArticleWithImage(articles: NewsArticle[], index: number, existingUrls?: Set<string>): NewsArticle | null {
   const valid = articles.filter(
-    (a) => a.title && a.title !== '[Removed]' && a.urlToImage,
+    (a) => a.title && a.title !== '[Removed]' && a.urlToImage && (!existingUrls || !existingUrls.has(a.url))
   );
   if (valid.length === 0) return null;
   return valid[index % valid.length];
@@ -63,8 +63,9 @@ async function findArticleWithImage(opts: {
   maxAgeHours: number;
   index: number;
   provider?: string;
+  existingUrls?: Set<string>;
 }): Promise<NewsArticle | null> {
-  const { query, language, maxAgeHours, index, provider } = opts;
+  const { query, language, maxAgeHours, index, provider, existingUrls } = opts;
 
   const attempts: { query: string; maxAgeHours?: number; pageSize: number }[] = [
     { query, maxAgeHours, pageSize: 10 },
@@ -81,7 +82,7 @@ async function findArticleWithImage(opts: {
         language,
         maxAgeHours: a.maxAgeHours,
       }, provider);
-      const picked = pickArticleWithImage(articles, index);
+      const picked = pickArticleWithImage(articles, index, existingUrls);
       if (picked) return picked;
     } catch (e) {
       console.error('Orchestrator attempt failed', a, e);
@@ -180,6 +181,13 @@ export const articleWorker = new Worker<ArticleJobData>(
     let resolvedSource: ResolvedSource | null = null;
     let candidateImage: string | undefined = manualImageUrl;
 
+    // ─── Fetch Existing URLs ────────────────────────────────────────────────
+    const existingLogs = await prisma.articleLog.findMany({
+      where: { websiteId, status: 'SUCCESS' },
+      select: { sourceUrl: true }
+    });
+    const existingUrls = new Set(existingLogs.map(l => l.sourceUrl).filter(Boolean) as string[]);
+
     // En AUTO ou MANUAL : on essaie toujours de trouver un article réel pour avoir image + source
     const newsQuery = mode === 'AUTO'
       ? (profile.newsApiQuery || profile.topics[idx % profile.topics.length] || '')
@@ -192,19 +200,20 @@ export const articleWorker = new Worker<ArticleJobData>(
         maxAgeHours: profile.maxArticleAgeHours,
         index: idx,
         provider,
+        existingUrls,
       });
       if (article) {
         resolvedSource = mapSource(article, mode === 'AUTO', mode === 'MANUAL' ? manualInput : undefined);
         topic = resolvedSource.topic;
         if (!candidateImage) candidateImage = resolvedSource.newsImage;
 
-        // ─── Détection de doublons ───────────────────────────────────────────
+        // ─── Détection de doublons (Race condition fallback) ────────────────
         const existing = await prisma.articleLog.findFirst({
           where: { websiteId, sourceUrl: resolvedSource.sourceUrl, status: 'SUCCESS' },
         });
         if (existing) {
-          console.log(`Doublon détecté pour ${websiteId} : ${resolvedSource.sourceUrl}`);
-          return { skipped: true, reason: 'Duplicate source URL', url: existing.wpPostUrl };
+          console.log(`Doublon détecté (race condition) pour ${websiteId} : ${resolvedSource.sourceUrl}`);
+          throw new Error(`Doublon détecté (race condition): ${resolvedSource.sourceUrl}`);
         }
       }
     }
