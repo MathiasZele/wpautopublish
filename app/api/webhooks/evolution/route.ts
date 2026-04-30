@@ -117,7 +117,9 @@ export async function POST(req: NextRequest) {
           mode: 'MANUAL',
           manualInput: sessionData.text,
           manualImageUrl: imageUrl,
-          autoCategorize: true
+          autoCategorize: true,
+          senderJid: remoteJid,
+          instanceId: instanceName
         });
 
         await prisma.whatsAppSession.delete({ where: { id: session.id } });

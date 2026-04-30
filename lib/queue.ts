@@ -13,6 +13,8 @@ export interface ArticleJobData {
   autoCategorize?: boolean;
   draftMode?: boolean;
   whatsAppRequestId?: string;
+  senderJid?: string;
+  instanceId?: string;
   provider?: string;
 }
 

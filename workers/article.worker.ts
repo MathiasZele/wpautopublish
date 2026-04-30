@@ -112,7 +112,8 @@ export const articleWorker = new Worker<ArticleJobData>(
   async (job: Job<ArticleJobData>) => {
     const { 
       websiteId, mode, manualInput, manualImageUrl, title, content, 
-      articleIndex, categoryIds, autoCategorize, draftMode, whatsAppRequestId, provider 
+      articleIndex, categoryIds, autoCategorize, draftMode, whatsAppRequestId, 
+      senderJid, instanceId, provider 
     } = job.data;
     const idx = articleIndex ?? 0;
 
@@ -349,6 +350,13 @@ ${links || '_Aucun article publié_'}`;
           data: { status: 'COMPLETED' }
         });
       }
+    } else if (senderJid && instanceId) {
+      // Notification directe pour /direct ou posts manuels unitaires
+      const message = `✅ *Article publié avec succès !*
+      
+📌 *Titre :* ${seo.title || topic}
+🔗 *Lien :* ${result.url}`;
+      await sendWhatsAppMessage(instanceId, senderJid, message);
     }
 
     return { post_id: result.post_id, url: result.url, cost };
