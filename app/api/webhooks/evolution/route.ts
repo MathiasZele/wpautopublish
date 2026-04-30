@@ -25,11 +25,15 @@ export async function POST(req: NextRequest) {
     const text = message.message?.conversation || 
                  message.message?.extendedTextMessage?.text || 
                  message.message?.imageMessage?.caption || 
+                 message.message?.viewOnceMessage?.message?.imageMessage?.caption ||
                  '';
     
-    const isImage = !!message.message?.imageMessage;
+    const isImage = !!(message.message?.imageMessage || message.message?.viewOnceMessage?.message?.imageMessage);
     
     console.log('Sender:', remoteJid, 'Text:', text, 'IsImage:', isImage);
+
+    // Si pas de texte ET pas d'image, on ignore
+    if (!text && !isImage) return NextResponse.json({ status: 'no_content' });
 
     // Security: Allowlist — check against DB-managed allowed numbers
     console.log('Checking allowlist...');
