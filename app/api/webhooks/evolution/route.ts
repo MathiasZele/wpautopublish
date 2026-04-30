@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
 
 
 
-    if (!text) return NextResponse.json({ status: 'no_text' });
+    if (!text && !isImage) return NextResponse.json({ status: 'no_text' });
 
     // ─── GESTION DES SESSIONS (Multi-étapes) ──────────────────────────────────
     const session = await prisma.whatsAppSession.findUnique({

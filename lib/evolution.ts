@@ -125,7 +125,13 @@ export async function getMediaBase64(instance: string, messageKey: any): Promise
       headers: evolutionHeaders,
       body: JSON.stringify({ message: { key: messageKey } }),
     });
-    if (!res.ok) return null;
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`Evolution getBase64 failed (${res.status}):`, errorText);
+      return null;
+    }
+    
     const data = await res.json();
     return data.base64 || null;
   } catch (error) {
