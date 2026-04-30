@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
           }
         });
 
-        await sendWhatsAppMessage(instanceName, remoteJid, "📥 Texte reçu ! Maintenant, envoyez l'URL d'une image ou tapez *'auto'* pour utiliser l'IA génératrice d'images.");
+        await sendWhatsAppMessage(instanceName, remoteJid, "📥 Texte reçu ! Maintenant, vous pouvez :\n- Envoyer directement une *image* 🖼️\n- Envoyer l'URL d'une image\n- Taper *'auto'* pour laisser l'IA choisir.");
         return NextResponse.json({ status: 'session_step_2' });
       }
 
@@ -86,14 +86,20 @@ export async function POST(req: NextRequest) {
 
         let imageUrl: string | undefined = undefined;
 
+        console.log(`Step WAITING_FOR_IMAGE. isImage: ${isImage}, text: ${text}`);
+
         if (isImage) {
           // Gérer l'image envoyée directement
+          console.log('Detected image message, fetching base64...');
           await sendWhatsAppMessage(instanceName, remoteJid, "⏳ Traitement de l'image...");
           const base64 = await getMediaBase64(instanceName, message.key);
           if (base64) {
+            console.log('Base64 fetched successfully, uploading to Cloudinary...');
             const buffer = Buffer.from(base64, 'base64');
             imageUrl = await uploadImageFromBuffer(buffer, `whatsapp_${Date.now()}`);
+            console.log('Cloudinary URL:', imageUrl);
           } else {
+            console.error('Failed to fetch base64 from Evolution API');
             await sendWhatsAppMessage(instanceName, remoteJid, "⚠️ Impossible de récupérer l'image. Veuillez réessayer ou envoyer un lien.");
             return NextResponse.json({ status: 'image_fetch_failed' });
           }
