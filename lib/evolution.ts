@@ -113,3 +113,23 @@ export async function logoutWhatsApp(instance: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Downloads media from Evolution API and returns it as a Buffer.
+ */
+export async function getMediaBase64(instance: string, messageKey: any): Promise<string | null> {
+  const url = `${EVOLUTION_API_URL}/message/getBase64/${instance}`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: evolutionHeaders,
+      body: JSON.stringify({ message: { key: messageKey } }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.base64 || null;
+  } catch (error) {
+    console.error('Failed to get media base64:', error);
+    return null;
+  }
+}

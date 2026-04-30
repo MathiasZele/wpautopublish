@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getArticleQueue } from '@/lib/queue';
-import { sendWhatsAppMessage } from '@/lib/evolution';
+import { sendWhatsAppMessage, getMediaBase64 } from '@/lib/evolution';
 import { changeWordPressPostStatus } from '@/lib/wordpress';
+import { uploadImageFromBuffer } from '@/lib/cloudinary';
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,8 +20,16 @@ export async function POST(req: NextRequest) {
 
     const message = body.data;
     const remoteJid = message.key.remoteJid;
-    const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
-    console.log('Sender:', remoteJid, 'Text:', text);
+    
+    // Extraction du texte (depuis conversation, message étendu ou caption d'image)
+    const text = message.message?.conversation || 
+                 message.message?.extendedTextMessage?.text || 
+                 message.message?.imageMessage?.caption || 
+                 '';
+    
+    const isImage = !!message.message?.imageMessage;
+    
+    console.log('Sender:', remoteJid, 'Text:', text, 'IsImage:', isImage);
 
     // Security: Allowlist — check against DB-managed allowed numbers
     console.log('Checking allowlist...');
@@ -75,7 +84,25 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ status: 'session_reset_site_missing' });
         }
 
-        const imageUrl = text.toLowerCase() === 'auto' ? null : text;
+        let imageUrl: string | undefined = undefined;
+
+        if (isImage) {
+          // Gérer l'image envoyée directement
+          await sendWhatsAppMessage(instanceName, remoteJid, "⏳ Traitement de l'image...");
+          const base64 = await getMediaBase64(instanceName, message.key);
+          if (base64) {
+            const buffer = Buffer.from(base64, 'base64');
+            imageUrl = await uploadImageFromBuffer(buffer, `whatsapp_${Date.now()}`);
+          } else {
+            await sendWhatsAppMessage(instanceName, remoteJid, "⚠️ Impossible de récupérer l'image. Veuillez réessayer ou envoyer un lien.");
+            return NextResponse.json({ status: 'image_fetch_failed' });
+          }
+        } else {
+          // Gérer le texte (URL ou 'auto')
+          if (text.toLowerCase() !== 'auto') {
+            imageUrl = text;
+          }
+        }
         
         // Ajouter à la queue pour traitement (reformulation + publication)
         const articleQueue = getArticleQueue();
@@ -83,12 +110,12 @@ export async function POST(req: NextRequest) {
           websiteId: website.id,
           mode: 'MANUAL',
           manualInput: sessionData.text,
-          manualImageUrl: imageUrl || undefined,
+          manualImageUrl: imageUrl,
           autoCategorize: true
         });
 
         await prisma.whatsAppSession.delete({ where: { id: session.id } });
-        await sendWhatsAppMessage(instanceName, remoteJid, `🚀 L'article est en cours de reformulation et sera publié sur *${website.name}* dans quelques instants !`);
+        await sendWhatsAppMessage(instanceName, remoteJid, `🚀 L'article est en cours de reformulation et sera bientôt publié sur *${website.name}* !`);
         return NextResponse.json({ status: 'session_completed' });
       }
     }
