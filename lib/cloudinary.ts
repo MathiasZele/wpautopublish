@@ -7,6 +7,12 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+console.log('Cloudinary Config:', {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY ? 'DEFINED' : 'MISSING',
+  api_secret: process.env.CLOUDINARY_API_SECRET ? 'DEFINED' : 'MISSING',
+});
+
 export async function uploadImageFromUrl(sourceUrl: string): Promise<string> {
   await assertPublicUrl(sourceUrl);
   const result = await cloudinary.uploader.upload(sourceUrl, {
