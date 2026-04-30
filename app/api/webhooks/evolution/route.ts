@@ -18,19 +18,18 @@ export async function POST(req: NextRequest) {
     const instanceName = body.instance;
     const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
 
-    // Security: Allowlist — ignore messages from unauthorized numbers
-    const allowedNumbers = (process.env.ALLOWED_WHATSAPP_NUMBERS || '')
-      .split(',')
-      .map(n => n.trim())
-      .filter(Boolean);
+    // Security: Allowlist — check against DB-managed allowed numbers
+    const allowedNumbers = await prisma.whatsAppAllowedNumber.findMany({ select: { phoneNumber: true } });
 
     if (allowedNumbers.length > 0) {
       // remoteJid format: "33612345678@s.whatsapp.net"
       const senderNumber = remoteJid.replace(/@.+$/, '');
-      if (!allowedNumbers.includes(senderNumber)) {
+      const isAllowed = allowedNumbers.some(n => n.phoneNumber === senderNumber);
+      if (!isAllowed) {
         return NextResponse.json({ status: 'unauthorized' });
       }
     }
+
 
     if (!text) return NextResponse.json({ status: 'no_text' });
 

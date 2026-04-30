@@ -154,6 +154,14 @@ model WhatsAppRequest {
   createdAt    DateTime @default(now())
 }
 
+model WhatsAppAllowedNumber {
+  id          String   @id @default(cuid())
+  phoneNumber String   @unique // ex: "33612345678" (no @s.whatsapp.net)
+  label       String?           // optional friendly name
+  createdAt   DateTime @default(now())
+}
+
+
 enum ArticleStatus {
   SUCCESS
   FAILED
