@@ -13,22 +13,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'ignored' });
     }
 
+    console.log('Webhook received:', body.event, instanceName);
     const message = body.data;
     const remoteJid = message.key.remoteJid;
-    const instanceName = body.instance;
     const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
+    console.log('Sender:', remoteJid, 'Text:', text);
 
     // Security: Allowlist — check against DB-managed allowed numbers
+    console.log('Checking allowlist...');
     const allowedNumbers = await prisma.whatsAppAllowedNumber.findMany({ select: { phoneNumber: true } });
+    console.log('Allowed numbers count:', allowedNumbers.length);
 
     if (allowedNumbers.length > 0) {
       // remoteJid format: "33612345678@s.whatsapp.net"
       const senderNumber = remoteJid.replace(/@.+$/, '');
       const isAllowed = allowedNumbers.some(n => n.phoneNumber === senderNumber);
+      console.log('Is sender allowed?', isAllowed, senderNumber);
       if (!isAllowed) {
         return NextResponse.json({ status: 'unauthorized' });
       }
     }
+
 
 
     if (!text) return NextResponse.json({ status: 'no_text' });
