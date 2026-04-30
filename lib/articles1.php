@@ -1,0 +1,694 @@
+<?php
+/**
+ * Script de publication automatique en masse
+ * Ce script est à coller dans Code Snippets.
+ * Il créera tous les articles en brouillon (Draft).
+ */
+
+function am_import_all_articles_from_ini() {
+    // Sécurité : n'exécuter que si ?import_brouillons=1 est dans l'URL
+    if ( !isset($_GET['import_brouillons']) || $_GET['import_brouillons'] !== '1' ) {
+        return;
+    }
+
+    // On utilise la syntaxe Nowdoc de PHP pour éviter tout problème d'échappement (pas besoin d'échapper les guillemets ou variables)
+    $raw_text = <<<'EOD'
+*Mali : Le Premier ministre Abdoulaye Maïga et le président du CNT Malick Diaw au chevet des blessés des attaques de Kati*
+
+*Une visite empreinte de compassion et de fermeté*
+
+Ce lundi 27 avril 2026, le Premier ministre malien, le Général de Division Abdoulaye Maïga, accompagné du Président du Conseil National de Transition (CNT), le Général Malick Diaw, s’est rendu au Centre Hospitalier Universitaire (CHU) Pr Bocar Sidy Sall de Bamako. Leur objectif : rendre visite aux victimes des attaques terroristes survenues le 25 avril dernier à Kati, dans la région de Koulikoro, et témoigner la solidarité du gouvernement et des autorités de la transition.
+
+*Une prise en charge médicale saluée par les autorités*
+
+Sur place, le Premier ministre et le président du CNT ont pu constater la qualité de la prise en charge réservée aux blessés. Selon un communiqué de la Primature relayé par le Centre de coordination et de redynamisation de la presse (CCRP), la majorité des victimes a déjà regagné son domicile, tandis que les cas les plus graves demeurent sous étroite surveillance médicale.
+
+Abdoulaye Maïga a salué « le dévouement et le professionnalisme remarquables » du personnel soignant du CHU Pr Bocar Sidy Sall, dont la réactivité a permis de limiter le tragique bilan humain de ces attaques lâches.
+
+*Des abris temporaires pour les sinistrés*
+
+Au-delà des soins, le gouvernement ne laisse personne sans toit. Le Premier ministre a annoncé que des abris temporaires seront mis à disposition des familles dont les habitations ont été endommagées ou détruites lors des affrontements. Ces structures provisoires permettront d’héberger les sinistrés dans l’attente de solutions durables, conformément aux instructions du Président de la transition, le Colonel Assimi Goïta.
+
+*Appel au calme et au respect des consignes de sécurité*
+
+Face à l’émotion suscitée par ces actes terroristes, Abdoulaye Maïga a invité l’ensemble de la population à « garder son calme et à respecter strictement les consignes de sécurité diffusées par les autorités militaires et civiles locales ». Il a également condamné avec la plus grande fermeté ces attaques qui visent à déstabiliser la région de Kati, zone stratégique abritant d’importantes installations militaires.
+
+*Une solidarité nationale renforcée*
+
+Cette visite des plus hautes autorités de la transition illustre l’engagement sans faille de l’État malien à soutenir ses forces de défense et les populations civiles victimes du terrorisme. Le Premier ministre a réaffirmé que « la lutte contre l’ennemi se poursuivra avec la même détermination », alors que le pays se prépare à célébrer le 29 avril la journée nationale de la décentralisation.
+
+Les blessés et leurs familles, visiblement touchés par cette marque de considération, ont exprimé leur gratitude envers les autorités et le personnel soignant. L’un d’eux, encore alité, a confié : « Savoir que le Premier ministre vient à notre chevet nous donne du courage. La nation ne nous oublie pas. »
+
+
+Alors que le Mali reste confronté à une menace terroriste persistante, la réponse de l’État, à la fois sécuritaire, sanitaire et sociale, démontre une résilience et une unité nationale sans faille. Le gouvernement, sous la direction du Colonel Assimi Goïta, poursuit ses efforts pour protéger les populations et panser les plaies de celles qui ont souffert de cette tragédie. La population est appelée à rester vigilante et unie derrière ses forces armées.
+
+
+
+__________________________________________________
+
+
+*Mali: Prime Minister Abdoulaye Maïga and CNT President Malick Diaw Visit Victims of the Kati Attacks*
+
+
+
+
+
+A visit marked by compassion and firmness
+
+On Monday, April 27, 2026, Mali’s Prime Minister, Major General Abdoulaye Maïga, accompanied by the President of the National Transitional Council (CNT), General Malick Diaw, visited the University Hospital Center (CHU) Pr Bocar Sidy Sall in Bamako. Their objective was to meet the victims of the terrorist attacks that occurred on April 25 in Kati, in the Koulikoro region, and to express the solidarity of the government and the transitional authorities.
+
+Medical care praised by authorities
+
+On site, the Prime Minister and the CNT President observed the quality of care provided to the injured. According to a statement from the Prime Minister’s Office relayed by the Press Coordination and Revitalization Center (CCRP), most victims have already returned home, while the most serious cases remain under close medical supervision.
+
+Abdoulaye Maïga praised the “remarkable dedication and professionalism” of the CHU Pr Bocar Sidy Sall medical staff, whose swift response helped limit the tragic human toll of these cowardly attacks.
+
+Temporary shelters for affected families
+
+Beyond medical care, the government is ensuring that no one is left without shelter. The Prime Minister announced that temporary housing will be provided for families whose homes were damaged or destroyed during the clashes. These provisional structures will accommodate affected households while awaiting long-term solutions, in line with the directives of the President of the Transition, Colonel Assimi Goïta.
+
+Call for calm and respect for security measures
+
+In response to the emotion sparked by these terrorist acts, Abdoulaye Maïga urged the entire population to “remain calm and strictly follow the security instructions issued by local military and civilian authorities.” He also strongly condemned the attacks, which aim to destabilize the Kati area—a strategic zone hosting key military installations.
+
+Strengthened national solidarity
+
+This visit by the highest transitional authorities illustrates the Malian state’s unwavering commitment to supporting both its defense forces and civilian populations affected by terrorism. The Prime Minister reaffirmed that “the fight against the enemy will continue with the same determination,” as the country prepares to celebrate National Decentralization Day on April 29.
+
+The injured and their families, visibly moved by this gesture of support, expressed their gratitude toward the authorities and medical staff. One patient, still bedridden, stated: “Knowing that the Prime Minister came to see us gives us courage. The nation has not forgotten us.”
+
+As Mali continues to face a persistent terrorist threat, the state’s response—combining security, healthcare, and social support—demonstrates resilience and strong national unity. Under the leadership of Colonel Assimi Goïta, the government is continuing its efforts to protect the population and heal the wounds of those affected by this tragedy. Citizens are called upon to remain vigilant and united behind their armed forces.
+
+
+
+
+
+__________________________________________  
+
+
+
+*Malí: el Primer Ministro Abdoulaye Maïga y el presidente del CNT Malick Diaw visitan a las víctimas de los ataques de Kati*
+
+
+
+
+Una visita marcada por la compasión y la firmeza
+
+Este lunes 27 de abril de 2026, el Primer Ministro de Malí, el General de División Abdoulaye Maïga, acompañado por el presidente del Consejo Nacional de Transición (CNT), el General Malick Diaw, se trasladó al Centro Hospitalario Universitario (CHU) Pr Bocar Sidy Sall de Bamako. Su objetivo: visitar a las víctimas de los ataques terroristas ocurridos el pasado 25 de abril en Kati, en la región de Koulikoro, y expresar la solidaridad del gobierno y de las autoridades de transición.
+
+Atención médica elogiada por las autoridades
+
+En el lugar, el Primer Ministro y el presidente del CNT pudieron constatar la calidad de la atención brindada a los heridos. Según un comunicado de la Primatura difundido por el Centro de Coordinación y Reactivación de la Prensa (CCRP), la mayoría de las víctimas ya ha regresado a sus hogares, mientras que los casos más graves permanecen bajo estricta vigilancia médica.
+
+Abdoulaye Maïga elogió “la notable dedicación y el profesionalismo” del personal sanitario del CHU Pr Bocar Sidy Sall, cuya rápida intervención permitió limitar el trágico saldo humano de estos cobardes ataques.
+
+Refugios temporales para los damnificados
+
+Más allá de la atención médica, el gobierno se asegura de que nadie quede sin techo. El Primer Ministro anunció que se pondrán a disposición refugios temporales para las familias cuyas viviendas fueron dañadas o destruidas durante los enfrentamientos. Estas estructuras provisionales permitirán alojar a los damnificados mientras se esperan soluciones duraderas, conforme a las instrucciones del presidente de la transición, el coronel Assimi Goïta.
+
+Llamado a la calma y al respeto de las medidas de seguridad
+
+Ante la emoción provocada por estos actos terroristas, Abdoulaye Maïga instó a toda la población a “mantener la calma y respetar estrictamente las consignas de seguridad difundidas por las autoridades militares y civiles locales”. También condenó con la mayor firmeza estos ataques, que buscan desestabilizar la zona de Kati, una región estratégica que alberga importantes instalaciones militares.
+
+Una solidaridad nacional reforzada
+
+Esta visita de las más altas autoridades de la transición ilustra el compromiso inquebrantable del Estado maliense de apoyar tanto a sus fuerzas de defensa como a las poblaciones civiles víctimas del terrorismo. El Primer Ministro reafirmó que “la lucha contra el enemigo continuará con la misma determinación”, mientras el país se prepara para celebrar el 29 de abril el Día Nacional de la Descentralización.
+
+Los heridos y sus familias, visiblemente conmovidos por este gesto, expresaron su gratitud hacia las autoridades y el personal sanitario. Uno de ellos, aún postrado en cama, declaró: “Saber que el Primer Ministro viene a vernos nos da valor. La nación no nos olvida.”
+
+Mientras Malí sigue enfrentando una amenaza terrorista persistente, la respuesta del Estado —tanto en el ámbito de la seguridad como en el sanitario y social— demuestra una gran resiliencia y una sólida unidad nacional. Bajo el liderazgo del coronel Assimi Goïta, el gobierno continúa sus esfuerzos para proteger a la población y sanar las heridas de quienes han sufrido esta tragedia. La población está llamada a mantenerse vigilante y unida detrás de sus fuerzas armadas.
+
+
+
+_________________________________________________________
+
+*Military-Diplomatic Cooperation: President Assimi Goïta Meets with Russian Ambassador to Mali Igor Gromyko*
+
+
+
+A Strengthened Strategic Partnership Between Bamako and Moscow
+
+The President of the Transition, His Excellency General of the Army Assimi Goïta, Head of State, granted an audience this Tuesday, April 28, 2026, to the Ambassador of the Russian Federation to Mali, Mr. Igor Gromyko. This meeting, held in the Malian capital, is part of the ongoing strengthening of bilateral relations between the two nations, whose intensity has steadily increased over the past several years.
+
+The discussions addressed the most pressing current issues, particularly the security situation in the Sahel region, as Mali continues to face a persistent terrorist threat. The two officials also reviewed the progress of multidimensional cooperation between Bamako and Moscow, a relationship described by informed observers of international affairs as exemplary.
+
+Russia, a Steadfast Partner of Mali in the Fight Against Terrorism
+
+At the heart of the talks, Ambassador Igor Gromyko strongly reaffirmed his country’s firm commitment to stand alongside Mali in the fight against international terrorism. Far from being a mere diplomatic formality, this statement is backed by concrete actions on the ground, where Malian Armed Forces (FAMa) and Russian forces conduct joint operations against terrorist armed groups operating in the north and center of the country.
+
+The Russian diplomat praised the courage and determination of Malian and Russian soldiers engaged daily in the effort to restore territorial integrity. He expressed a solemn wish: “I wish the FAMa and the Russian Forces every success in their sacred mission to protect populations and restore state authority across the entire national territory.”
+
+“Russia Will Always Be Mali’s Friend”: A Strong Message from Moscow
+
+In a solemn statement, Ambassador Igor Gromyko reassured Malian authorities and the population: “Russia will always be Mali’s friend.” This powerful declaration reflects Moscow’s intention to maintain long-term support for Bamako, beyond political or diplomatic contingencies. It also sends a clear signal to the international community regarding Russia’s determination to stand by its Sahelian partner despite external pressures and criticism of this cooperation.
+
+For President Assimi Goïta, this renewed commitment from Russia represents a major asset in the national strategy to restore security. The Malian Head of State, who has made counterterrorism the top priority of his mandate, views Moscow’s technical, logistical, and operational support as a key lever for restoring peace and stability in Mali.
+
+A Bilateral Relationship Set to Expand in the Coming Months
+
+Beyond security, the two officials discussed prospects for expanding cooperation into other strategic sectors, including energy, infrastructure, healthcare, and the training of civilian and military personnel. Russia, through its public and private enterprises, aims to increase its economic presence in Mali, while Bamako seeks to diversify its international partnerships without abandoning its traditional alliances.
+
+This meeting between General Assimi Goïta and Ambassador Igor Gromyko confirms the strength of the Bamako–Moscow axis, driven by a shared vision of national sovereignty and resistance to external interference. Both parties agreed to maintain regular high-level dialogue to monitor joint projects and adapt their cooperation to Mali’s evolving needs.
+
+A Message of Reassurance for the FAMa and the Malian People
+
+As Mali navigates a pivotal period in its history, marked by significant security and diplomatic challenges, the Russian ambassador’s visit and message offer reassurance to the FAMa on the frontlines and to populations affected by years of violence. Russia’s promise of enduring friendship resonates as encouragement to continue the fight for the full liberation of national territory. Attention now turns to the next stages of this cooperation, which could serve as a model for other African countries facing similar threats.
+
+
+
+__________________________________________________
+
+*Cooperación militar-diplomática: el presidente Assimi Goïta se reúne con el embajador de Rusia en Mali, Igor Gromyko*
+
+
+
+Una asociación estratégica reforzada entre Bamako y Moscú
+
+El presidente de la Transición, Su Excelencia el General de Ejército Assimi Goïta, jefe de Estado, concedió una audiencia este martes 28 de abril de 2026 al embajador de la Federación de Rusia en Mali, el señor Igor Gromyko. Este encuentro, celebrado en la capital maliense, se inscribe en el marco del fortalecimiento continuo de las relaciones bilaterales entre ambas naciones, cuya intensidad ha ido en aumento en los últimos años.
+
+Las conversaciones abordaron los temas más urgentes de la actualidad, en particular la situación de seguridad en la región del Sahel, donde Mali sigue enfrentando una amenaza terrorista persistente. Ambos responsables también hicieron un balance de los avances de la cooperación multidimensional entre Bamako y Moscú, una relación calificada por observadores informados de los asuntos internacionales como ejemplar.
+
+Rusia, un socio firme de Mali en la lucha contra el terrorismo
+
+En el centro de los intercambios, el embajador Igor Gromyko reafirmó con firmeza el compromiso de su país de acompañar a Mali en la lucha contra el terrorismo internacional. Lejos de ser una simple declaración diplomática, este compromiso se sustenta en acciones concretas sobre el terreno, donde las Fuerzas Armadas Malienses (FAMa) y las fuerzas rusas llevan a cabo operaciones conjuntas contra grupos armados terroristas que operan en el norte y el centro del país.
+
+El diplomático ruso elogió el valor y la determinación de los soldados malienses y rusos, comprometidos diariamente en la restauración de la integridad territorial. Expresó además un deseo solemne: “Deseo a las FAMa y a las fuerzas rusas pleno éxito en su misión sagrada de proteger a las poblaciones y restablecer la autoridad del Estado en todo el territorio nacional”.
+
+«Rusia siempre será amiga de Mali»: un mensaje firme desde Moscú
+
+En una declaración solemne, el embajador Igor Gromyko tranquilizó a las autoridades y a la población maliense: “Rusia siempre será amiga de Mali”. Esta afirmación contundente refleja la voluntad de Moscú de mantener un apoyo duradero a Bamako, más allá de las coyunturas políticas o diplomáticas. También envía una señal clara a la comunidad internacional sobre la determinación de Rusia de respaldar a su socio saheliano pese a las presiones externas y a las críticas hacia esta cooperación.
+
+Para el presidente Assimi Goïta, este renovado compromiso de Rusia representa un activo importante en la estrategia nacional de recuperación de la seguridad. El jefe del Estado maliense, que ha hecho de la lucha contra el terrorismo la prioridad de su mandato, considera el apoyo técnico, logístico y operativo de Moscú como una palanca clave para restablecer la paz y la estabilidad en Mali.
+
+Una relación bilateral llamada a ampliarse en los próximos meses
+
+Más allá del ámbito de la seguridad, ambos responsables abordaron las perspectivas de ampliación de la cooperación hacia otros sectores estratégicos, como la energía, las infraestructuras, la salud y la formación de personal civil y militar. Rusia, a través de sus empresas públicas y privadas, pretende reforzar su presencia económica en Mali, mientras que Bamako busca diversificar sus alianzas internacionales sin renunciar a sus socios tradicionales.
+
+Este encuentro entre el general Assimi Goïta y el embajador Igor Gromyko confirma la solidez del eje Bamako–Moscú, impulsado por una visión compartida de la soberanía nacional y la resistencia a las injerencias externas. Ambas partes acordaron mantener un diálogo regular de alto nivel para seguir los proyectos conjuntos y adaptar su cooperación a las necesidades cambiantes de Mali.
+
+Un mensaje de tranquilidad para las FAMa y el pueblo maliense
+
+En un contexto crucial de su historia, marcado por importantes desafíos de seguridad y diplomáticos, la visita y el mensaje del embajador ruso aportan un sentimiento de confianza tanto a las FAMa desplegadas en el frente como a las poblaciones afectadas por años de violencia. La promesa de una amistad duradera por parte de Rusia resuena como un aliento para continuar la lucha por la liberación total del territorio nacional. La atención se centra ahora en las próximas etapas de esta cooperación, que podría servir de modelo para otros países africanos enfrentados a amenazas similares.
+
+
+
+
+
+_________________________________________________________
+
+
+*Mali : une tentative de déstabilisation aux ramifications internationales ? Entre accusations explosives et guerre d’influence au Sahel*
+
+
+
+
+Le Mali se retrouve une nouvelle fois au cœur d’une tempête géopolitique aux contours troublants. Après les attaques coordonnées du 25 avril 2026 ayant visé plusieurs villes stratégiques dont Bamako, Gao ou encore Kidal, des révélations non confirmées mais persistantes viennent alimenter une thèse lourde de conséquences : celle d’une tentative de coup d’État indirect, orchestrée dans l’ombre avec des soutiens étrangers.
+
+Une offensive d’ampleur inédite
+Les faits sont saisissants. Des attaques simultanées, menées avec une coordination militaire impressionnante, ont ciblé des positions névralgiques de l’État malien. Selon certaines sources, jusqu’à 10 000 à 12 000 assaillants auraient été mobilisés dans ce qui ressemble à une stratégie calquée sur des scénarios de déstabilisation déjà observés ailleurs.
+
+Le bilan est tout aussi frappant : plus de 1 000 assaillants neutralisés, des centaines de combattants éliminés dans plusieurs zones, et des dizaines de véhicules détruits. L’objectif présumé ? S’emparer des centres de pouvoir, à commencer par le palais présidentiel, et installer un nouvel ordre politique.
+
+Des noms qui dérangent
+Au cœur des spéculations, un nom revient avec insistance : Karim Keïta, fils de l’ancien président Ibrahim Boubacar Keïta. Ancien député et président de la commission Défense, il est présenté par certaines sources comme un acteur clé d’un réseau aux ramifications régionales et internationales.
+
+À ses côtés, d’autres figures sont évoquées : Alassane Ouattara, Emmanuel Macron, ainsi que des personnalités maliennes en exil. Plus troublant encore, des contacts supposés avec Iyad Ag Ghaly et l’imam Mahmoud Dicko auraient été établis dans l’optique d’une transition politique planifiée.
+
+Ces allégations, bien que spectaculaires, restent à ce stade non confirmées officiellement.
+
+Une guerre d’influence qui dépasse le Mali
+Parallèlement, un autre élément vient complexifier la situation : l’implication supposée d’acteurs étrangers dans cette crise. Des rapports évoquent la présence d’éléments liés à Ukraine aux côtés de forces associées à France dans certaines zones de conflit.
+
+Déjà en 2024, un incident diplomatique entre Sénégal et l’Ukraine avait suscité des tensions, après des propos jugés ambigus sur un possible soutien à des groupes armés au Mali. À l’époque, Dakar avait fermement réagi.
+
+Aujourd’hui, ces nouveaux éléments s’inscrivent dans une dynamique plus large : celle d’un affrontement indirect entre puissances, sur fond de rivalité avec Russie et de recomposition des alliances au Sahel.
+
+Entre rumeurs et nécessité de vérité
+Face à cette avalanche d’informations, une réalité s’impose : aucune confirmation officielle n’a été apportée par les autorités maliennes ou les pays cités. Le silence des gouvernements concernés contraste avec l’ampleur des accusations.
+
+Dans un contexte déjà fragilisé par des années de crise sécuritaire, la prudence reste de mise. Car au-delà des faits, c’est aussi une bataille de récits qui se joue — une bataille où désinformation, propagande et intérêts stratégiques s’entremêlent.
+
+Un Sahel sous haute tension
+Le Mali, épicentre de cette crise, incarne aujourd’hui les fractures d’un Sahel en recomposition. Entre lutte contre le terrorisme, rivalités internationales et instabilité السياسية, chaque événement devient un enjeu global.
+
+Une chose est certaine : les attaques du 25 avril ne sont pas un simple épisode sécuritaire. Elles pourraient marquer un tournant majeur dans la bataille pour l’influence en Afrique de l’Ouest.
+
+Et dans cette guerre silencieuse, la vérité reste, plus que jamais, un champ de bataille.
+
+
+
+
+
+_____________________________________________________________
+
+*Mali: an attempt at destabilization with international ramifications? Between explosive accusations and a war of influence in the Sahel*
+
+
+
+Mali once again finds itself at the center of a geopolitical storm with troubling outlines. Following the coordinated attacks of April 25, 2026, which targeted several strategic cities including Bamako, Gao, and Kidal, unconfirmed but persistent revelations are fueling a heavy hypothesis: that of an indirect coup attempt, orchestrated from the shadows with foreign support.
+
+An unprecedented large-scale offensive
+The facts are striking. Simultaneous attacks, carried out with impressive military coordination, targeted key Malian state positions. According to some sources, up to 10,000 to 12,000 attackers may have been mobilized in what resembles a destabilization strategy similar to scenarios observed elsewhere.
+
+The toll is equally striking: more than 1,000 attackers neutralized, hundreds of fighters eliminated in several areas, and dozens of vehicles destroyed. The presumed objective? To seize centers of power, starting with the presidential palace, and install a new political order.
+
+Names that raise questions
+At the center of speculation, one name repeatedly appears: Karim Keïta, son of former President Ibrahim Boubacar Keïta. A former deputy and head of the Defense Committee, he is presented by some sources as a key actor in a network with regional and international ramifications.
+
+Alongside him, other figures are mentioned: Alassane Ouattara, Emmanuel Macron, as well as Malian personalities in exile. More troubling still, alleged contacts with Iyad Ag Ghaly and Imam Mahmoud Dicko are said to have been established in the context of a planned political transition.
+
+These claims, however spectacular, remain unconfirmed at this stage.
+
+An influence war beyond Mali
+At the same time, another element complicates the situation: the alleged involvement of foreign actors in the crisis. Reports mention the presence of elements linked to Ukraine alongside forces associated with France in certain conflict zones.
+
+As early as 2024, a diplomatic incident between Senegal and Ukraine had already sparked tensions after statements interpreted as ambiguous regarding possible support to armed groups in Mali. At the time, Dakar reacted strongly.
+
+Today, these new elements fit into a broader dynamic: an indirect confrontation between global powers, amid rivalry with Russia and a reshaping of alliances in the Sahel.
+
+Between rumors and the need for truth
+Faced with this flood of information, one reality stands out: no official confirmation has been provided by Malian authorities or the countries mentioned. The silence of the governments concerned contrasts with the scale of the accusations.
+
+In an already fragile security context, caution remains essential. Beyond the facts, a battle of narratives is also unfolding—where misinformation, propaganda, and strategic interests intertwine.
+
+A highly tense Sahel
+Mali, the epicenter of this crisis, now embodies the fractures of a Sahel in transformation. Between counterterrorism efforts, international rivalries, and political instability, each event becomes a global issue.
+
+One thing is certain: the April 25 attacks are not a simple security incident. They could mark a major turning point in the struggle for influence in West Africa.
+
+And in this silent war, truth remains more than ever a battlefield.
+
+
+
+
+_________________________________________________________
+
+
+*Malí: ¿un intento de desestabilización con ramificaciones internacionales? Entre acusaciones explosivas y guerra de influencia en el Sahel*
+
+
+
+
+Malí vuelve a situarse en el centro de una tormenta geopolítica de contornos inquietantes. Tras los ataques coordinados del 25 de abril de 2026, que afectaron a varias ciudades estratégicas como Bamako, Gao y Kidal, revelaciones no confirmadas pero persistentes alimentan una hipótesis de gran peso: la de un intento de golpe de Estado indirecto, orquestado en la sombra con apoyos extranjeros.
+
+Una ofensiva de gran escala sin precedentes
+Los hechos son impactantes. Ataques simultáneos, ejecutados con una coordinación militar impresionante, han apuntado a posiciones neurálgicas del Estado maliense. Según algunas fuentes, entre 10.000 y 12.000 atacantes habrían sido movilizados en una estrategia similar a escenarios de desestabilización observados en otros lugares.
+
+El balance es igualmente contundente: más de 1.000 atacantes neutralizados, cientos de combatientes eliminados en varias zonas y decenas de vehículos destruidos. ¿El objetivo presunto? Tomar los centros de poder, empezando por el palacio presidencial, e instalar un nuevo orden político.
+
+Nombres que generan controversia
+En el centro de las especulaciones aparece repetidamente un nombre: Karim Keïta, hijo del expresidente Ibrahim Boubacar Keïta. Exdiputado y presidente de la comisión de Defensa, algunas fuentes lo presentan como un actor clave de una red con ramificaciones regionales e internacionales.
+
+Junto a él se mencionan otras figuras: Alassane Ouattara, Emmanuel Macron, así como personalidades malienses en el exilio. Más inquietante aún, se habrían establecido contactos con Iyad Ag Ghaly y el imán Mahmoud Dicko en el marco de una transición política planificada.
+
+Estas afirmaciones, aunque espectaculares, no han sido confirmadas oficialmente.
+
+Una guerra de influencia más allá de Malí
+Paralelamente, otro elemento complica la situación: la supuesta implicación de actores extranjeros en la crisis. Informes mencionan la presencia de elementos vinculados a Ucrania junto a fuerzas asociadas a Francia en ciertas zonas de conflicto.
+
+Ya en 2024, un incidente diplomático entre Senegal y Ucrania había generado tensiones tras declaraciones consideradas ambiguas sobre un posible apoyo a grupos armados en Malí. En aquel momento, Dakar reaccionó firmemente.
+
+Hoy, estos elementos se inscriben en una dinámica más amplia: un enfrentamiento indirecto entre potencias globales, en un contexto de rivalidad con Rusia y reconfiguración de alianzas en el Sahel.
+
+Entre rumores y necesidad de verdad
+Ante esta avalancha de información, una realidad se impone: no existe confirmación oficial por parte de las autoridades malienses ni de los países citados. El silencio de los gobiernos contrasta con la magnitud de las acusaciones.
+
+En un contexto ya frágil desde el punto de vista de la seguridad, la prudencia es esencial. Más allá de los hechos, también se desarrolla una batalla de narrativas, donde desinformación, propaganda e intereses estratégicos se entrelazan.
+
+Un Sahel en alta tensión
+Malí, epicentro de esta crisis, encarna hoy las fracturas de un Sahel en transformación. Entre lucha antiterrorista, rivalidades internacionales e inestabilidad política, cada evento se convierte en un asunto global.
+
+Una cosa es cierta: los ataques del 25 de abril no son un simple episodio de seguridad. Podrían marcar un punto de inflexión en la lucha por la influencia en África Occidental.
+
+Y en esta guerra silenciosa, la verdad sigue siendo, más que nunca, un campo de batalla.
+
+
+
+
+
+
+
+_________________________________________________________
+
+*Mali: uma tentativa de desestabilização com dimensões internacionais? Entre acusações explosivas e guerra de influência no Sahel*
+
+
+
+
+
+O Mali volta a ocupar o centro de uma tempestade geopolítica de contornos complexos e sensíveis. Após os ataques coordenados de 25 de abril de 2026, que atingiram cidades estratégicas como Bamako, Gao e Kidal, surgiram alegações não confirmadas, mas persistentes, que alimentam uma hipótese preocupante: a de uma tentativa de golpe de Estado indireto com possível apoio de atores estrangeiros.
+
+Uma ofensiva de grande escala
+A magnitude dos ataques impressiona. Ações simultâneas, conduzidas com elevado nível de coordenação, sugerem um planejamento militar sofisticado. Algumas fontes indicam que entre 10.000 e 12.000 combatentes teriam sido mobilizados, em uma estratégia que lembra cenários de desestabilização observados em outros conflitos.
+
+O balanço também chama atenção: mais de 1.000 atacantes neutralizados, centenas de mortos em várias regiões e dezenas de veículos destruídos. O objetivo presumido seria tomar o controle de centros-chave do poder estatal, incluindo o palácio presidencial, para impor uma nova ordem política.
+
+Nomes que levantam controvérsias
+No centro das especulações aparece Karim Keïta, filho do ex-presidente Ibrahim Boubacar Keïta. Ex-deputado e antigo presidente da comissão de Defesa, ele é apontado por algumas fontes como uma figura central em uma rede com conexões regionais e internacionais.
+
+Também são mencionados nomes como Alassane Ouattara, Emmanuel Macron, além de figuras políticas malinesas no exílio. Mais controverso ainda, há alegações de contatos com Iyad Ag Ghaly e o influente líder religioso Mahmoud Dicko no contexto de uma possível transição política.
+
+Até o momento, nenhuma dessas acusações foi confirmada oficialmente.
+
+Um tabuleiro geopolítico mais amplo
+A situação se torna ainda mais complexa com as alegações sobre o envolvimento de atores estrangeiros. Alguns relatos apontam para a presença de elementos ligados à Ucrânia ao lado de forças associadas à França em certas zonas de conflito.
+
+Já em 2024, um incidente diplomático entre Senegal e a Ucrânia gerou tensões após declarações ambíguas sobre um possível apoio a grupos armados no Mali. Na ocasião, Dacar reagiu com firmeza.
+
+Esses novos elementos parecem se inserir em uma dinâmica mais ampla: uma confrontação indireta entre potências internacionais, especialmente no contexto da rivalidade com a Rússia, além de um reposicionamento estratégico no Sahel.
+
+Entre rumores e necessidade de verificação
+Apesar da gravidade das acusações, nenhuma autoridade malinês ou dos países citados confirmou oficialmente essas informações. O silêncio institucional contrasta com a intensidade dos relatos que circulam na mídia e nas redes sociais.
+
+Em um contexto já fragilizado por anos de insegurança, a prudência é fundamental. Para além dos fatos, desenrola-se também uma batalha de narrativas, onde desinformação, interesses estratégicos e comunicação política se entrelaçam.
+
+Um Sahel sob alta tensão
+O Mali simboliza hoje as tensões de um Sahel em plena transformação. Entre o combate ao terrorismo, rivalidades internacionais e fragilidade institucional, cada crise assume uma dimensão global.
+
+O que ocorreu em 25 de abril pode não ser apenas mais um episódio de segurança. Pode representar um ponto de inflexão na disputa por influência na África Ocidental.
+
+E nesta guerra silenciosa, a verdade tornou-se um dos territórios mais disputados.
+
+
+_________________________________________________________
+
+
+*Mali : une tentative de déstabilisation aux ramifications internationales ? Entre accusations explosives et guerre d’influence au Sahel*
+
+
+
+
+Le Mali se retrouve une nouvelle fois au cœur d’une tempête géopolitique aux contours troublants. Après les attaques coordonnées du 25 avril 2026 ayant visé plusieurs villes stratégiques dont Bamako, Gao ou encore Kidal, des révélations non confirmées mais persistantes viennent alimenter une thèse lourde de conséquences : celle d’une tentative de coup d’État indirect, orchestrée dans l’ombre avec des soutiens étrangers.
+
+Une offensive d’ampleur inédite
+Les faits sont saisissants. Des attaques simultanées, menées avec une coordination militaire impressionnante, ont ciblé des positions névralgiques de l’État malien. Selon certaines sources, jusqu’à 10 000 à 12 000 assaillants auraient été mobilisés dans ce qui ressemble à une stratégie calquée sur des scénarios de déstabilisation déjà observés ailleurs.
+
+Le bilan est tout aussi frappant : plus de 1 000 assaillants neutralisés, des centaines de combattants éliminés dans plusieurs zones, et des dizaines de véhicules détruits. L’objectif présumé ? S’emparer des centres de pouvoir, à commencer par le palais présidentiel, et installer un nouvel ordre politique.
+
+Des noms qui dérangent
+Au cœur des spéculations, un nom revient avec insistance : Karim Keïta, fils de l’ancien président Ibrahim Boubacar Keïta. Ancien député et président de la commission Défense, il est présenté par certaines sources comme un acteur clé d’un réseau aux ramifications régionales et internationales.
+
+À ses côtés, d’autres figures sont évoquées : Alassane Ouattara, Emmanuel Macron, ainsi que des personnalités maliennes en exil. Plus troublant encore, des contacts supposés avec Iyad Ag Ghaly et l’imam Mahmoud Dicko auraient été établis dans l’optique d’une transition politique planifiée.
+
+Ces allégations, bien que spectaculaires, restent à ce stade non confirmées officiellement.
+
+Une guerre d’influence qui dépasse le Mali
+Parallèlement, un autre élément vient complexifier la situation : l’implication supposée d’acteurs étrangers dans cette crise. Des rapports évoquent la présence d’éléments liés à Ukraine aux côtés de forces associées à France dans certaines zones de conflit.
+
+Déjà en 2024, un incident diplomatique entre Sénégal et l’Ukraine avait suscité des tensions, après des propos jugés ambigus sur un possible soutien à des groupes armés au Mali. À l’époque, Dakar avait fermement réagi.
+
+Aujourd’hui, ces nouveaux éléments s’inscrivent dans une dynamique plus large : celle d’un affrontement indirect entre puissances, sur fond de rivalité avec Russie et de recomposition des alliances au Sahel.
+
+Entre rumeurs et nécessité de vérité
+Face à cette avalanche d’informations, une réalité s’impose : aucune confirmation officielle n’a été apportée par les autorités maliennes ou les pays cités. Le silence des gouvernements concernés contraste avec l’ampleur des accusations.
+
+Dans un contexte déjà fragilisé par des années de crise sécuritaire, la prudence reste de mise. Car au-delà des faits, c’est aussi une bataille de récits qui se joue — une bataille où désinformation, propagande et intérêts stratégiques s’entremêlent.
+
+Un Sahel sous haute tension
+Le Mali, épicentre de cette crise, incarne aujourd’hui les fractures d’un Sahel en recomposition. Entre lutte contre le terrorisme, rivalités internationales et instabilité السياسية, chaque événement devient un enjeu global.
+
+Une chose est certaine : les attaques du 25 avril ne sont pas un simple épisode sécuritaire. Elles pourraient marquer un tournant majeur dans la bataille pour l’influence en Afrique de l’Ouest.
+
+Et dans cette guerre silencieuse, la vérité reste, plus que jamais, un champ de bataille.
+
+
+
+
+
+
+
+
+
+
+_________________________________________________________
+
+
+
+*Mali: an attempt at destabilization with international ramifications? Between explosive accusations and a war of influence in the Sahel*
+
+
+
+Mali once again finds itself at the center of a geopolitical storm with troubling outlines. Following the coordinated attacks of April 25, 2026, which targeted several strategic cities including Bamako, Gao, and Kidal, unconfirmed but persistent revelations are fueling a heavy hypothesis: that of an indirect coup attempt, orchestrated from the shadows with foreign support.
+
+An unprecedented large-scale offensive
+The facts are striking. Simultaneous attacks, carried out with impressive military coordination, targeted key Malian state positions. According to some sources, up to 10,000 to 12,000 attackers may have been mobilized in what resembles a destabilization strategy similar to scenarios observed elsewhere.
+
+The toll is equally striking: more than 1,000 attackers neutralized, hundreds of fighters eliminated in several areas, and dozens of vehicles destroyed. The presumed objective? To seize centers of power, starting with the presidential palace, and install a new political order.
+
+Names that raise questions
+At the center of speculation, one name repeatedly appears: Karim Keïta, son of former President Ibrahim Boubacar Keïta. A former deputy and head of the Defense Committee, he is presented by some sources as a key actor in a network with regional and international ramifications.
+
+Alongside him, other figures are mentioned: Alassane Ouattara, Emmanuel Macron, as well as Malian personalities in exile. More troubling still, alleged contacts with Iyad Ag Ghaly and Imam Mahmoud Dicko are said to have been established in the context of a planned political transition.
+
+These claims, however spectacular, remain unconfirmed at this stage.
+
+An influence war beyond Mali
+At the same time, another element complicates the situation: the alleged involvement of foreign actors in the crisis. Reports mention the presence of elements linked to Ukraine alongside forces associated with France in certain conflict zones.
+
+As early as 2024, a diplomatic incident between Senegal and Ukraine had already sparked tensions after statements interpreted as ambiguous regarding possible support to armed groups in Mali. At the time, Dakar reacted strongly.
+
+Today, these new elements fit into a broader dynamic: an indirect confrontation between global powers, amid rivalry with Russia and a reshaping of alliances in the Sahel.
+
+Between rumors and the need for truth
+Faced with this flood of information, one reality stands out: no official confirmation has been provided by Malian authorities or the countries mentioned. The silence of the governments concerned contrasts with the scale of the accusations.
+
+In an already fragile security context, caution remains essential. Beyond the facts, a battle of narratives is also unfolding—where misinformation, propaganda, and strategic interests intertwine.
+
+A highly tense Sahel
+Mali, the epicenter of this crisis, now embodies the fractures of a Sahel in transformation. Between counterterrorism efforts, international rivalries, and political instability, each event becomes a global issue.
+
+One thing is certain: the April 25 attacks are not a simple security incident. They could mark a major turning point in the struggle for influence in West Africa.
+
+And in this silent war, truth remains more than ever a battlefield.
+
+_________________________________________________________
+
+*BEIJING CLOSES THE SKY: HOW CHINA GROUNDED TAIWAN'S LAST AFRICAN FOOTHOLD*
+
+*In a calculated act of diplomatic coercion, Beijing pressured three African and Indian Ocean nations into revoking Taiwan's overflight clearances, stranding a president, silencing an ally, and exposing the ruthless mechanics of China's global isolation campaign against Taipei*
+
+
+There are many ways a powerful state can bully a smaller one. It can threaten markets, withdraw investment, recall ambassadors, or mobilise warships along a contested strait. But in late April 2026, China demonstrated a more surgical method, one that required no soldiers, no sanctions, and no formal declaration of anything. It simply closed the sky.
+
+When President Lai Ching-te prepared to fly to Eswatini for a state visit marking King Mswati III's anniversary on the throne, three nations, Seychelles, Mauritius, and Madagascar abruptly withdrew the overflight permissions that had been quietly granted for his presidential aircraft. No official explanation was offered. No diplomatic note was exchanged publicly. The sky above a stretch of the African continent was simply, and suddenly, closed to the leader of a democratic government of 23 million people trying to visit his country's last remaining ally on the continent.
+
+Taiwan's presidential office cancelled the trip. Officials in Taipei stated plainly that the last-minute revocations left no guarantee of safety for the president or his delegation. But safety, in this instance, was not the issue. The issue was Beijing and Beijing, in a rare moment of undisguised satisfaction, confirmed it.
+
+China publicly praised the three nations that had blocked the flight. That praise offered openly, without embarrassment, told the world everything it needed to know about what had actually happened in those quiet corridors of diplomatic pressure.
+
+*The Architecture of Isolation*
+
+To understand what occurred, one must first understand the system China has spent decades constructing. Since the founding of the People's Republic in 1949, Beijing has pursued a relentless campaign to erase Taiwan's international presence not through outright military conquest, but through the patient, methodical elimination of every diplomatic space the island inhabits.
+
+The campaign has been extraordinarily effective. In 1971, Taiwan held China's seat at the United Nations. Today, it is formally recognised by only a dozen states. In Africa alone, country after country has switched allegiance from Taipei to Beijing  lured by infrastructure investment, debt financing, preferential trade arrangements, and the sheer gravitational pull of the world's second-largest economy. Each switch was presented as a sovereign choice. Each was, in reality, a transaction.
+
+Eswatini is what remains. A small, landlocked monarchy in southern Africa, it has resisted Beijing's inducements and maintained formal recognition of Taiwan despite sustained pressure. For Taipei, Eswatini is not merely an ally it is proof of concept. Proof that a state can choose Taiwan and survive. Proof that Beijing's campaign, however powerful, is not yet total. That is precisely why China could not allow Lai Ching-te to land there with cameras rolling and flags flying.
+
+*What Taiwan Lost and What It Means*
+
+The cancellation of Lai's visit is being described by analysts as historically unprecedented, the first known instance of a sitting Taiwanese president being forced to abandon a foreign trip after flight permissions were revoked at the last minute. That distinction matters. It means China has found a new instrument, and has demonstrated its willingness to use it openly.
+
+For Taiwan, the losses are layered. There is the immediate loss, a symbolic visit to Eswatini that would have reaffirmed the bilateral relationship and given Lai a platform to speak as a democratically elected head of state before an international audience. There is the strategic loss, the signal, now broadcast globally, that even Taiwan's most basic diplomatic activities remain vulnerable to Chinese interdiction. 
+Taiwan's government has long argued that what China is conducting against it is not legitimate foreign policy but systematic coercion  the use of economic dependency, political leverage, and institutional pressure to deny a functioning democracy its place in the international order.
+
+
+________________________________________________________
+
+*SEYCHELLES, MAURITIUS, MADAGASCAR: HOW CHINA TURNED AFRICAN AIRSPACE INTO A POLITICAL WEAPON *
+
+*Taipei accuses Beijing of coercing three African and Indian Ocean states into revoking overflight clearances, forcing President Lai Ching-te to abandon a symbolically vital visit to Taiwan's last African ally*
+
+
+When President Lai Ching-te prepared to fly to Eswatini late last month, the journey was more than a courtesy call. It was a carefully planned assertion of Taiwan's right to exist on the world stage a visit to the only country on the African continent that still formally recognises Taipei. What happened next has shaken Taiwan's diplomatic establishment and drawn international attention to the lengths Beijing will go to close off even the narrowest corridors of Taiwanese engagement abroad.
+
+Three countries, Seychelles, Mauritius, and Madagascar abruptly withdrew overflight permissions that had been granted for the presidential aircraft. Without those clearances, the route to Eswatini became untenable. Taiwan's presidential office announced the cancellation, stating that the last-minute revocations left no guarantee of the safety of the president and his delegation. The trip, scheduled for April 22 to 27, had been intended to coincide with celebrations marking King Mswati III's anniversary on the throne.
+
+Taiwan did not mince words about what had occurred. Officials in Taipei said the withdrawals were not routine aviation decisions, they were the result of intense political and economic pressure applied by Beijing, including, according to Reuters, threats of economic measures against the countries involved. The assessment gained immediate credibility when China publicly praised the nations that had blocked the flight. That endorsement, offered voluntarily and openly by Beijing, stripped away any pretence that the disruptions had been technical or procedural in nature.
+
+*A First of Its Kind*
+
+Diplomatic analysts have noted that this appears to be the first recorded instance of a sitting Taiwanese president being forced to abandon a foreign trip after flight permissions were revoked at the last minute. Even by the standards of a government long accustomed to diplomatic obstruction, the episode marks an escalation. It reveals not only China's willingness to intervene in the sovereign airspace decisions of third-party nations, but its capacity to do so swiftly and at scale.
+
+The three countries involved Seychelles, Mauritius, and Madagascar all maintain formal diplomatic relations with Beijing. For each, the calculus was almost certainly straightforward, the economic and political cost of defying China far exceeded any benefit from allowing a Taiwanese presidential aircraft to pass through their airspace. That calculation, replicated across an increasing number of nations, is precisely the mechanism by which Beijing is shrinking Taiwan's world.
+
+*Eswatini: The Last Foothold*
+
+Eswatini's significance in this episode cannot be overstated. It is Taiwan's sole remaining diplomatic ally across the entire African continent, a fact that renders every high-level exchange between Taipei and Mbabane symbolically weighty. The Kingdom of Eswatini, a small, landlocked monarchy ruled by King Mswati III, has maintained its recognition of Taiwan despite sustained Chinese inducements to switch allegiance, a pattern that has claimed nearly every other African state over the past two decades.
+
+Lai's planned visit was therefore not merely a friendly bilateral trip. It was a public demonstration that Taiwan still has partners, that it can still send a president to a continent where it once held broad recognition and receive him as a head of state. The cancellation does not undo that relationship, but it inflicted visible damage on Taipei's ability to project diplomatic normalcy.
+
+Taiwan's government has consistently argued that this pattern represents a fundamental injustice, not just a diplomatic inconvenience, but a denial of the island's basic right to participate in the international system. With only a small number of formal allies remaining, Taipei depends heavily on symbolic engagements, trade relationships, and informal ties to maintain any international presence. When those channels are closed through third-party coercion, Taiwan argues it is not merely losing a meeting or a flight path it is being denied the standing that every functioning state requires.
+
+
+
+__________________________________________________
+
+*Attaques terroristes au Mali : riposte immédiate des FAMa et appel au calme national*
+
+
+La journée du 25 avril 2026 restera marquée par une nouvelle tentative de déstabilisation du Mali. Selon un communiqué officiel de l’État-Major Général des Armées, des groupes armés terroristes ont mené, tôt dans la matinée, des attaques coordonnées visant plusieurs localités ainsi que des positions stratégiques, y compris des casernes.
+
+Face à cette offensive, la réaction des Forces Armées Maliennes (FAMa) a été rapide, ferme et déterminée. Grâce à leur professionnalisme et à leur engagement sur le terrain, les assaillants ont essuyé de lourdes pertes. Plusieurs d’entre eux ont été neutralisés et du matériel ennemi détruit, démontrant une fois de plus la montée en puissance des capacités opérationnelles de l’armée malienne.
+
+À Bamako comme dans d’autres régions du pays, la situation est désormais sous contrôle, bien que des opérations de ratissage soient toujours en cours afin de traquer les derniers éléments terroristes et sécuriser durablement les zones touchées.
+
+Dans un contexte où la guerre se joue aussi sur le terrain de l’information, les autorités militaires ont lancé un appel ferme à la population : rester calme, vigilante et surtout éviter de relayer des contenus non vérifiés susceptibles d’alimenter la peur ou de servir la propagande ennemie. La bataille contre le terrorisme est aussi une bataille contre la désinformation.
+
+Ce nouvel épisode illustre la persistance de la menace sécuritaire au Mali, mais également la résilience de ses forces de défense. Plus que jamais, l’unité nationale apparaît comme une arme essentielle. Le message est clair : face à l’adversité, le peuple malien et son armée doivent rester solidaires.
+
+Unis, ils vaincront.
+
+
+________________________________________________________
+
+*Terrorist Attacks in Mali: Immediate Response by FAMa and Call for National Calm*
+
+April 25, 2026, will be remembered as another attempt to destabilize Mali. According to an official statement from the General Staff of the Armed Forces, terrorist armed groups carried out coordinated attacks early in the morning targeting several localities as well as strategic positions, including military barracks.
+
+In response to this offensive, the Malian Armed Forces (FAMa) reacted swiftly, firmly, and decisively. Thanks to their professionalism and commitment on the ground, the attackers suffered heavy losses. Several were neutralized and enemy equipment was destroyed, once again demonstrating the growing operational capabilities of the Malian army.
+
+In Bamako as well as in other regions of the country, the situation is now under control, although clearing operations are still ongoing to track down the remaining terrorist elements and ensure lasting security in the affected areas.
+
+In a context where war is also fought on the information front, military authorities have issued a strong appeal to the population: remain calm, stay vigilant, and above all avoid spreading unverified content that could fuel fear or serve enemy propaganda. The fight against terrorism is also a fight against disinformation.
+
+This new episode highlights the persistence of the security threat in Mali, but also the resilience of its defense forces. More than ever, national unity appears as an essential weapon. The message is clear: in the face of adversity, the Malian people and their army must remain united.
+
+United, they will prevail.
+
+
+__________________________________________________
+
+
+*Ataques terroristas en Malí: respuesta inmediata de las FAMa y llamado a la calma nacional*
+
+
+El 25 de abril de 2026 quedará marcado como un nuevo intento de desestabilización de Malí. Según un comunicado oficial del Estado Mayor General de las Fuerzas Armadas, grupos armados terroristas llevaron a cabo, a primera hora de la mañana, ataques coordinados dirigidos contra varias localidades y posiciones estratégicas, incluidos cuarteles militares.
+
+Ante esta ofensiva, la reacción de las Fuerzas Armadas de Malí (FAMa) fue rápida, firme y decidida. Gracias a su profesionalismo y compromiso en el terreno, los atacantes sufrieron importantes pérdidas. Varios de ellos fueron neutralizados y se destruyó material enemigo, lo que demuestra una vez más el fortalecimiento de las capacidades operativas del ejército maliense.
+
+En Bamako y en otras regiones del país, la situación está ahora bajo control, aunque continúan las operaciones de rastreo para localizar a los últimos elementos terroristas y garantizar la seguridad duradera de las zonas afectadas.
+
+En un contexto en el que la guerra también se libra en el terreno de la información, las autoridades militares han lanzado un firme llamado a la población: mantener la calma, permanecer vigilantes y, sobre todo, evitar difundir contenidos no verificados que puedan alimentar el miedo o servir a la propaganda enemiga. La lucha contra el terrorismo también es una lucha contra la desinformación.
+
+Este nuevo episodio ilustra la persistencia de la amenaza de seguridad en Malí, pero también la resiliencia de sus fuerzas de defensa. Más que nunca, la unidad nacional aparece como un arma esencial. El mensaje es claro: frente a la adversidad, el pueblo maliense y su ejército deben permanecer unidos.
+
+Unidos, vencerán.
+
+
+
+________________________________________________________
+
+
+*Ataques terroristas no Mali: resposta imediata das FAMa e apelo à calma nacional*
+
+
+O dia 25 de abril de 2026 ficará marcado como mais uma tentativa de desestabilização do Mali. Segundo um comunicado oficial do Estado-Maior General das Forças Armadas, grupos armados terroristas realizaram, nas primeiras horas da manhã, ataques coordenados visando várias localidades e posições estratégicas, incluindo quartéis militares.
+
+Diante dessa ofensiva, a reação das Forças Armadas do Mali (FAMa) foi rápida, firme e determinada. Graças ao seu profissionalismo e empenho no terreno, os atacantes sofreram pesadas perdas. Vários foram neutralizados e equipamentos inimigos foram destruídos, demonstrando mais uma vez o fortalecimento das capacidades operacionais do exército malinês.
+
+Em Bamako e em outras regiões do país, a situação está agora sob controle, embora operações de varredura ainda estejam em andamento para localizar os últimos elementos terroristas e garantir a segurança duradoura das áreas afetadas.
+
+Num contexto em que a guerra também se trava no campo da informação, as autoridades militares lançaram um forte apelo à população: manter a calma, permanecer vigilante e, sobretudo, evitar a disseminação de conteúdos não verificados que possam alimentar o medo ou servir à propaganda inimiga. A luta contra o terrorismo também é uma luta contra a desinformação.
+
+Este novo episódio ilustra a persistência da ameaça de segurança no Mali, mas também a resiliência de suas forças de defesa. Mais do que nunca, a unidade nacional surge como uma arma essencial. A mensagem é clara: diante da adversidade, o povo malinês e seu exército devem permanecer unidos.
+
+Unidos, vencerão.
+
+
+__________________________________________________
+
+
+*Mali : Réaction rapide des forces armées face à des attaques terroristes coordonnées*
+
+L’État-Major Général des Armées du Mali a annoncé, ce samedi 25 avril 2026, qu’une vaste opération de ratissage est actuellement en cours à Bamako, Kati ainsi que dans plusieurs localités de l’intérieur du pays, à la suite d’attaques menées par des groupes armés terroristes.
+
+Selon le communiqué officiel, ces groupes, non encore identifiés, ont tenté des actions simultanées visant certains points stratégiques et casernes militaires, aussi bien dans la capitale que dans d’autres villes. Face à cette offensive qualifiée de complexe, les Forces armées maliennes ont opposé une riposte immédiate et coordonnée.
+
+L’État-Major salue la réaction « vigoureuse » des unités engagées, qui aurait permis de mettre en déroute les assaillants. Le bilan provisoire fait état de la neutralisation de plusieurs centaines de combattants ennemis, même si les évaluations restent en cours. Cette réponse rapide témoigne, selon les autorités militaires, du niveau de préparation et de la montée en puissance opérationnelle des forces maliennes dans la lutte contre le terrorisme.
+
+Au-delà de l’action militaire, l’armée a tenu à souligner la collaboration des populations civiles, dont les informations et le soutien auraient contribué à la traque des éléments en fuite. Dans un contexte marqué par des menaces sécuritaires persistantes, cette synergie entre forces de défense et citoyens apparaît comme un facteur déterminant dans la stabilisation du territoire.
+
+Les opérations de ratissage se poursuivent afin de sécuriser totalement les zones concernées et d’empêcher toute tentative de reconstitution des groupes armés. L’État-Major assure que la situation est « sous contrôle » et appelle la population au calme, à la vigilance et à la responsabilité, notamment en évitant la diffusion d’informations non vérifiées susceptibles d’alimenter la confusion.
+
+Cet épisode intervient dans un contexte régional où plusieurs pays du Sahel restent confrontés à des attaques asymétriques menées par des groupes terroristes. Dans ce cadre, la capacité de réaction rapide des Forces armées maliennes est perçue comme un élément clé dans la défense de l’intégrité territoriale et la protection des populations.
+
+En dépit des défis, les autorités maliennes entendent démontrer que leurs forces de défense sont en mesure de faire face aux menaces, en s’appuyant sur une stratégie mêlant engagement militaire, renseignement et coopération avec les populations locales.
+
+
+________________________________________________________
+
+
+EOD;
+
+    // Séparateur : ligne avec des underscores (au moins 10)
+    $articles_raw = preg_split('/_{10,}/', $raw_text);
+    $count = 0;
+
+    foreach ($articles_raw as $raw) {
+        $raw = trim($raw);
+        if (empty($raw)) continue;
+
+        // Remplacer les retours charriot Windows s'ils existent
+        $raw = str_replace("\r\n", "\n", $raw);
+        $lines = explode("\n", $raw);
+        $title = '';
+        $content_lines = array();
+
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            
+            // Ignorer les lignes vides au début
+            if (empty($trimmed) && empty($title)) {
+                continue;
+            }
+
+            if (empty($title)) {
+                $title = $trimmed;
+                continue;
+            }
+
+            if (empty($trimmed)) {
+                $content_lines[] = ""; // Ligne vide pour aérer le HTML
+                continue;
+            }
+
+            // Transformation de *texte* en <strong>texte</strong>
+            // Le motif regex capture tout ce qui est entre astérisques
+            $formatted = preg_replace('/\*(.*?)\*/', '<strong>$1</strong>', $trimmed);
+            $content_lines[] = "<p>" . $formatted . "</p>";
+        }
+
+        // Le titre doit être propre pour le champ WordPress
+        $clean_title = str_replace('*', '', $title);
+        $content = implode("\n", $content_lines);
+
+        // Insertion
+        $article_data = array(
+            'post_title'    => $clean_title,
+            'post_content'  => $content,
+            'post_status'   => 'draft',
+            'post_author'   => get_current_user_id() ? get_current_user_id() : 1,
+            'post_category' => array(548, 550) // Politique / Afrique par défaut
+        );
+
+        $post_id = wp_insert_post($article_data);
+
+        if (!is_wp_error($post_id)) {
+            // SEO Yoast
+            update_post_meta($post_id, '_yoast_wpseo_title', $clean_title . " | Afrique Média");
+            
+            // Meta-description auto générée (150 caractères)
+            $desc = wp_strip_all_tags($content);
+            $desc = mb_substr($desc, 0, 150) . '...';
+            update_post_meta($post_id, '_yoast_wpseo_metadesc', $desc);
+
+            update_post_meta($post_id, '_yoast_wpseo_focuskw', mb_substr($clean_title, 0, 80));
+
+            $count++;
+        }
+    }
+
+    wp_die("<h1>✅ Opération réussie !</h1><p><strong>" . $count . " articles</strong> ont été créés avec succès et mis en brouillon.</p><p><a href='/wp-admin/edit.php'>Aller voir les brouillons dans l\'administration</a></p>");
+}
+
+add_action('init', 'am_import_all_articles_from_ini');

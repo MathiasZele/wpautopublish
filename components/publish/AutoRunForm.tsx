@@ -11,6 +11,7 @@ export function AutoRunForm({ sites }: { sites: PublishSite[] }) {
   const [count, setCount] = useState(3);
   const [spacing, setSpacing] = useState(60);
   const [selectedCats, setSelectedCats] = useState<number[]>(sites[0]?.defaultCategoryIds ?? []);
+  const [autoCategorize, setAutoCategorize] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const currentSite = sites.find((s) => s.id === websiteId);
@@ -29,7 +30,8 @@ export function AutoRunForm({ sites }: { sites: PublishSite[] }) {
       body: JSON.stringify({
         count,
         spacingSeconds: spacing,
-        categoryIds: selectedCats,
+        categoryIds: autoCategorize ? [] : selectedCats,
+        autoCategorize,
       }),
     });
 
@@ -106,7 +108,20 @@ export function AutoRunForm({ sites }: { sites: PublishSite[] }) {
         </div>
       </div>
 
-      {websiteId && (
+      <div className="flex items-center gap-2 py-2">
+        <input
+          type="checkbox"
+          id="autoCategorize"
+          checked={autoCategorize}
+          onChange={(e) => setAutoCategorize(e.target.checked)}
+          className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
+        />
+        <label htmlFor="autoCategorize" className="text-sm font-medium text-gray-700 cursor-pointer">
+          Laisser l'IA choisir la catégorie et les tags automatiquement
+        </label>
+      </div>
+
+      {websiteId && !autoCategorize && (
         <CategoryPicker
           siteId={websiteId}
           selected={selectedCats}

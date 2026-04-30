@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCcw, ImageIcon } from 'lucide-react';
+import { RefreshCcw, ImageIcon, Sparkles, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface WPCategory {
@@ -44,6 +44,8 @@ export function ProfileForm({ siteId, initial }: ProfileFormProps) {
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<WPCategory[]>([]);
   const [loadingCats, setLoadingCats] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [reasoning, setReasoning] = useState<string | null>(null);
 
   async function loadCategories() {
     setLoadingCats(true);
@@ -65,6 +67,32 @@ export function ProfileForm({ siteId, initial }: ProfileFormProps) {
     loadCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function handleAutoGenerate() {
+    if (
+      (state.newsApiQuery || topicsInput) &&
+      !confirm('Cela va remplacer la requête NewsAPI et les thématiques actuelles. Continuer ?')
+    ) {
+      return;
+    }
+    setGenerating(true);
+    setReasoning(null);
+    try {
+      const res = await fetch(`/api/sites/${siteId}/auto-generate`, { method: 'POST' });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: 'Erreur' }));
+        toast.error(error || 'Échec de la génération');
+        return;
+      }
+      const data = await res.json();
+      setState((s) => ({ ...s, newsApiQuery: data.newsApiQuery }));
+      setTopicsInput(data.topics.join(', '));
+      setReasoning(data.reasoning || null);
+      toast.success(`${data.topics.length} thématiques générées`);
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   function toggleCategory(id: number) {
     setState((s) => ({
@@ -141,6 +169,35 @@ export function ProfileForm({ siteId, initial }: ProfileFormProps) {
             <option value="formel">Formel</option>
           </select>
         </div>
+      </div>
+
+      <div className="bg-gradient-to-br from-brand-50 to-purple-50 border border-brand-200 rounded-xl p-4">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 text-sm font-semibold text-brand-700">
+              <Sparkles size={16} />
+              Configuration automatique
+            </div>
+            <p className="text-xs text-gray-600 mt-1">
+              Analyse les catégories, articles récents et infos SEO du site WordPress pour générer
+              une requête NewsAPI et des thématiques cohérentes.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleAutoGenerate}
+            disabled={generating}
+            className="flex-shrink-0 inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg font-medium"
+          >
+            {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            {generating ? 'Génération…' : 'Générer avec l\'IA'}
+          </button>
+        </div>
+        {reasoning && (
+          <div className="mt-2 text-xs text-gray-700 italic border-l-2 border-brand-300 pl-3">
+            {reasoning}
+          </div>
+        )}
       </div>
 
       <div>

@@ -67,6 +67,15 @@ export async function testWordPressConnection(
       redirect: 'manual',
     });
     if (!response.ok) {
+      if (response.status === 403) {
+        return {
+          success: false,
+          error: 'Accès refusé (403) — vérifiez que l\'API REST WordPress est activée et que les mots de passe d\'application sont autorisés',
+        };
+      }
+      if (response.status === 401) {
+        return { success: false, error: 'Identifiants incorrects (401) — vérifiez le nom d\'utilisateur et le mot de passe d\'application' };
+      }
       return { success: false, error: `HTTP ${response.status}` };
     }
     return { success: true };
@@ -80,6 +89,84 @@ export interface WPCategory {
   name: string;
   slug: string;
   count: number;
+}
+
+export interface SiteContext {
+  name: string;
+  description: string;
+  url: string;
+  language?: string;
+  categories: { name: string; count: number }[];
+  recentTitles: string[];
+}
+
+export async function fetchSiteContext(
+  siteUrl: string,
+  username: string,
+  appPassword: string,
+): Promise<SiteContext> {
+  const baseUrl = siteUrl.replace(/\/$/, '');
+  const auth = `Basic ${Buffer.from(`${username}:${appPassword}`).toString('base64')}`;
+  const headers = { Authorization: auth };
+
+  await assertPublicUrl(baseUrl + '/wp-json/');
+
+  const [rootRes, catsRes, postsRes] = await Promise.all([
+    fetch(`${baseUrl}/wp-json/`, { headers, cache: 'no-store', redirect: 'manual' }),
+    fetch(`${baseUrl}/wp-json/wp/v2/categories?per_page=50&orderby=count&order=desc`, {
+      headers,
+      cache: 'no-store',
+      redirect: 'manual',
+    }),
+    fetch(`${baseUrl}/wp-json/wp/v2/posts?per_page=10&_fields=title&orderby=date&order=desc`, {
+      headers,
+      cache: 'no-store',
+      redirect: 'manual',
+    }),
+  ]);
+
+  if (!rootRes.ok) throw new Error(`WP root ${rootRes.status}`);
+
+  const root = (await rootRes.json()) as {
+    name?: string;
+    description?: string;
+    url?: string;
+    home?: string;
+    timezone_string?: string;
+  };
+
+  let categories: { name: string; count: number }[] = [];
+  if (catsRes.ok) {
+    const list = (await catsRes.json()) as { name: string; count: number }[];
+    categories = list.map((c) => ({ name: c.name, count: c.count })).slice(0, 30);
+  }
+
+  let recentTitles: string[] = [];
+  if (postsRes.ok) {
+    const posts = (await postsRes.json()) as { title?: { rendered?: string } }[];
+    recentTitles = posts
+      .map((p) => stripHtml(p.title?.rendered ?? ''))
+      .filter(Boolean);
+  }
+
+  return {
+    name: root.name ?? '',
+    description: root.description ?? '',
+    url: root.home ?? root.url ?? baseUrl,
+    categories,
+    recentTitles,
+  };
+}
+
+function stripHtml(s: string): string {
+  return s
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&#8217;/g, '’')
+    .replace(/&#8211;/g, '-')
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, ' ')
+    .trim();
 }
 
 export async function fetchWordPressCategories(
@@ -101,8 +188,11 @@ export async function fetchWordPressCategories(
       redirect: 'manual',
     });
     if (!res.ok) {
+      // Page suivante vide (WordPress renvoie 400 quand il n'y a plus de pages)
       if (res.status === 400 && page > 1) break;
-      throw new Error(`WP categories ${res.status}`);
+      // L'API REST est bloquée ou les droits sont insuffisants : on retourne ce qu'on a
+      console.warn(`fetchWordPressCategories: ${res.status} on ${url} — returning partial results`);
+      break;
     }
     const list = (await res.json()) as WPCategory[];
     all.push(...list.map((c) => ({ id: c.id, name: c.name, slug: c.slug, count: c.count })));

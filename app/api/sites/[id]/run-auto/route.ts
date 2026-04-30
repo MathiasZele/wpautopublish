@@ -8,6 +8,7 @@ const schema = z.object({
   count: z.number().int().min(1).max(50),
   spacingSeconds: z.number().int().min(0).max(3600).optional(),
   categoryIds: z.array(z.number().int()).optional(),
+  autoCategorize: z.boolean().optional(),
 });
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -29,7 +30,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Données invalides' }, { status: 400 });
   }
 
-  const { count, spacingSeconds, categoryIds } = parsed.data;
+  const { count, spacingSeconds, categoryIds, autoCategorize } = parsed.data;
   const queue = getArticleQueue();
   const jobs: string[] = [];
 
@@ -41,6 +42,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         mode: 'AUTO',
         articleIndex: i,
         categoryIds,
+        autoCategorize,
       },
       {
         delay: (spacingSeconds ?? 0) * 1000 * i,

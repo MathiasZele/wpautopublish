@@ -131,10 +131,25 @@ model ArticleLog {
   sourceUrl     String?
   sourceName    String?
   imageUrl      String?
+  categoryIds   Int[]         @default([])
+  tags          String[]      @default([])
   publishedAt   DateTime?
   createdAt     DateTime      @default(now())
 
   website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+}
+
+model WhatsAppRequest {
+  id           String   @id @default(cuid())
+  senderJid    String
+  instanceId   String
+  websiteId    String
+  totalCount   Int
+  successCount Int      @default(0)
+  failedCount  Int      @default(0)
+  articleLinks String[] @default([])
+  status       String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  createdAt    DateTime @default(now())
 }
 
 enum ArticleStatus {

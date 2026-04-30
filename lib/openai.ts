@@ -17,14 +17,21 @@ export function buildArticlePrompt(params: {
   language: string;
   customPrompt?: string;
   newsContext?: string;
+  availableCategories?: { id: number; name: string }[];
 }): { system: string; user: string } {
+  const categoryInstruction = params.availableCategories?.length
+    ? `\nChoisis 1 à 3 IDs de catégories parmi cette liste :\n${params.availableCategories.map(c => `- ID: ${c.id}, Nom: ${c.name}`).join('\n')}`
+    : '';
+
   const system = `Tu es un rédacteur web expert SEO.
 Tu rédiges des articles en ${params.language}, au ton ${params.tone}.
 Format de sortie OBLIGATOIRE : HTML propre uniquement.
 Structure : <h2> pour les parties, <h3> pour les sous-parties, <ul><li> pour les listes.
 Aucun markdown. Uniquement le contenu de l'article, sans balises <html> <body> <head>.
+${categoryInstruction}
+Génère aussi 3 à 5 tags (étiquettes) pertinents pour l'article.
 À la fin, retourne un objet JSON sur UNE seule ligne avec ce format exact :
-SEO_META:{"title":"...","metadesc":"...","focuskw":"..."}
+SEO_META:{"title":"...","metadesc":"...","focuskw":"...","categoryIds":[...],"tags":["..."]}
 ${params.customPrompt || ''}`.trim();
 
   const user = params.newsContext
@@ -36,10 +43,10 @@ ${params.customPrompt || ''}`.trim();
 
 export function parseArticleResponse(raw: string): {
   html: string;
-  seo: { title: string; metadesc: string; focuskw: string };
+  seo: { title: string; metadesc: string; focuskw: string; categoryIds?: number[]; tags?: string[] };
 } {
   const seoMatch = raw.match(/SEO_META:(\{.*?\})/);
-  let seo = { title: '', metadesc: '', focuskw: '' };
+  let seo: any = { title: '', metadesc: '', focuskw: '', categoryIds: [], tags: [] };
   if (seoMatch) {
     try {
       seo = JSON.parse(seoMatch[1]);

@@ -3,7 +3,9 @@ import { Worker, Job } from 'bullmq';
 import IORedis from 'ioredis';
 import { prisma } from '../lib/prisma';
 import { openai, buildArticlePrompt, parseArticleResponse, calculateCost } from '../lib/openai';
-import { publishToWordPress } from '../lib/wordpress';
+import { publishToWordPress, fetchWordPressCategories } from '../lib/wordpress';
+import { sendWhatsAppMessage } from '../lib/evolution';
+import { decrypt } from '../lib/encryption';
 import { searchNews, type NewsArticle } from '../lib/newsapi';
 import { uploadImageFromUrl } from '../lib/cloudinary';
 import { sanitizeArticleHtml } from '../lib/sanitizeHtml';
@@ -101,7 +103,7 @@ function mapSource(a: NewsArticle, keepNewsContext: boolean, overrideTopic?: str
 export const articleWorker = new Worker<ArticleJobData>(
   'article-generation',
   async (job: Job<ArticleJobData>) => {
-    const { websiteId, mode, manualInput, manualImageUrl, articleIndex, categoryIds } = job.data;
+    const { websiteId, mode, manualInput, manualImageUrl, articleIndex, categoryIds, autoCategorize, whatsAppRequestId } = job.data;
     const idx = articleIndex ?? 0;
 
     const website = await prisma.website.findUnique({
@@ -136,12 +138,36 @@ export const articleWorker = new Worker<ArticleJobData>(
         resolvedSource = mapSource(article, mode === 'AUTO', mode === 'MANUAL' ? manualInput : undefined);
         topic = resolvedSource.topic;
         if (!candidateImage) candidateImage = resolvedSource.newsImage;
+
+        // ─── Détection de doublons ───────────────────────────────────────────
+        const existing = await prisma.articleLog.findFirst({
+          where: { websiteId, sourceUrl: resolvedSource.sourceUrl, status: 'SUCCESS' },
+        });
+        if (existing) {
+          console.log(`Doublon détecté pour ${websiteId} : ${resolvedSource.sourceUrl}`);
+          return { skipped: true, reason: 'Duplicate source URL', url: existing.wpPostUrl };
+        }
       }
     }
 
     // Si on exige une image et qu'on n'en a aucune → échec contrôlé
     if (requireImage && !candidateImage) {
       throw new NoImageFoundError(newsQuery || topic);
+    }
+
+    // ─── Récupération des catégories si auto-catégorisation activée ──────────
+    let availableCategories: { id: number; name: string }[] | undefined;
+    if (autoCategorize) {
+      try {
+        const wpCats = await fetchWordPressCategories(
+          website.url,
+          website.wpUsername,
+          decrypt(website.wpAppPassword)
+        );
+        availableCategories = wpCats.map((c) => ({ id: c.id, name: c.name }));
+      } catch (e) {
+        console.error('Failed to fetch WP categories', e);
+      }
     }
 
     // ─── Génération de l'article ────────────────────────────────────────────
@@ -151,6 +177,7 @@ export const articleWorker = new Worker<ArticleJobData>(
       language: profile.language,
       customPrompt: profile.customPrompt ?? undefined,
       newsContext: resolvedSource?.newsContext,
+      availableCategories,
     });
 
     const completion = await openai.chat.completions.create({
@@ -184,7 +211,11 @@ export const articleWorker = new Worker<ArticleJobData>(
 
     // ─── Publication WordPress ──────────────────────────────────────────────
     const finalCategoryIds =
-      categoryIds && categoryIds.length > 0 ? categoryIds : profile.defaultCategoryIds;
+      autoCategorize && seo.categoryIds && seo.categoryIds.length > 0
+        ? seo.categoryIds
+        : categoryIds && categoryIds.length > 0
+        ? categoryIds
+        : profile.defaultCategoryIds;
 
     const result = await publishToWordPress({
       website,
@@ -196,6 +227,7 @@ export const articleWorker = new Worker<ArticleJobData>(
       featured_image_url: cloudinaryUrl,
       status: 'publish',
       categories: finalCategoryIds,
+      tags: seo.tags,
     });
 
     await prisma.articleLog.create({
@@ -212,9 +244,33 @@ export const articleWorker = new Worker<ArticleJobData>(
         sourceUrl: resolvedSource?.sourceUrl,
         sourceName: resolvedSource?.sourceName,
         imageUrl: cloudinaryUrl,
+        categoryIds: finalCategoryIds,
+        tags: seo.tags || [],
         publishedAt: new Date(),
       },
     });
+
+    // Update WhatsApp Request if needed
+    if (whatsAppRequestId) {
+      const updatedRequest = await prisma.whatsAppRequest.update({
+        where: { id: whatsAppRequestId },
+        data: {
+          successCount: { increment: 1 },
+          articleLinks: { push: result.url }
+        }
+      });
+
+      if (updatedRequest.successCount + updatedRequest.failedCount >= updatedRequest.totalCount) {
+        const links = updatedRequest.articleLinks.map((l, i) => `${i + 1}. ${l}`).join('\n');
+        const message = `🏁 *Batch terminé pour ${website.name}*\n\nArticles publiés (${updatedRequest.successCount}/${updatedRequest.totalCount}) :\n${links}`;
+        await sendWhatsAppMessage(updatedRequest.instanceId, updatedRequest.senderJid, message);
+        
+        await prisma.whatsAppRequest.update({
+          where: { id: whatsAppRequestId },
+          data: { status: 'COMPLETED' }
+        });
+      }
+    }
 
     return { post_id: result.post_id, url: result.url, cost };
   },
@@ -245,6 +301,25 @@ articleWorker.on('failed', async (job, err) => {
         errorMessage: sanitizeErrorForLog(err.message),
       },
     });
+
+    // Update WhatsApp Request on failure
+    if (job.data.whatsAppRequestId) {
+      const updatedRequest = await prisma.whatsAppRequest.update({
+        where: { id: job.data.whatsAppRequestId },
+        data: { failedCount: { increment: 1 } }
+      });
+
+      if (updatedRequest.successCount + updatedRequest.failedCount >= updatedRequest.totalCount) {
+        const links = updatedRequest.articleLinks.map((l, i) => `${i + 1}. ${l}`).join('\n');
+        const message = `🏁 *Batch terminé* (avec des erreurs)\n\nRéussis: ${updatedRequest.successCount}\nÉchecs: ${updatedRequest.failedCount}\n\nArticles publiés :\n${links}`;
+        await sendWhatsAppMessage(updatedRequest.instanceId, updatedRequest.senderJid, message);
+        
+        await prisma.whatsAppRequest.update({
+          where: { id: job.data.whatsAppRequestId },
+          data: { status: updatedRequest.successCount > 0 ? 'COMPLETED' : 'FAILED' }
+        });
+      }
+    }
   } catch (logErr) {
     console.error('Failed to log error', logErr);
   }

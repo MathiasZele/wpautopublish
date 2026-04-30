@@ -8,6 +8,8 @@ export interface ArticleJobData {
   manualImageUrl?: string;
   articleIndex?: number;
   categoryIds?: number[];
+  autoCategorize?: boolean;
+  whatsAppRequestId?: string;
 }
 
 const globalForQueue = globalThis as unknown as {
