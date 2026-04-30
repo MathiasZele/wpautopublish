@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getArticleQueue } from '@/lib/queue';
 import { sendWhatsAppMessage, getMediaBase64 } from '@/lib/evolution';
-import { changeWordPressPostStatus } from '@/lib/wordpress';
+import { changeWordPressPostStatus, getWordPressPostInfo } from '@/lib/wordpress';
 import { uploadImageFromBuffer } from '@/lib/cloudinary';
 
 export async function POST(req: NextRequest) {
@@ -134,8 +134,10 @@ export async function POST(req: NextRequest) {
 
 /post [nb] [site] [brouillon] : Publie X articles
 /direct [site] : Publie un article à partir de votre texte
+/publier [lien] : Publie un article qui est en brouillon
 /supprimer [lien] : Met l'article à la corbeille WP
 /brouillon [lien] : Repasse l'article en brouillon WP
+/info [lien] : Affiche l'état d'un article
 /sites : Liste vos sites connectés
 /status : État des dernières requêtes
 /vider-historique : Vide l'historique WhatsApp
@@ -228,6 +230,54 @@ Exemple : \`/post 5 iBusiness brouillon\``;
         await sendWhatsAppMessage(instanceName, remoteJid, `⚠️ Échec de la mise en brouillon sur WordPress.`);
       }
       return NextResponse.json({ status: 'drafted' });
+    }
+
+    // 6.b Commande /publier <lien>
+    const publishMatch = text.match(/^\/publier\s+(https?:\/\/[^\s]+)/i);
+    if (publishMatch) {
+      const targetUrl = publishMatch[1].trim();
+      const log = await prisma.articleLog.findFirst({
+        where: { wpPostUrl: targetUrl },
+        include: { website: true }
+      });
+
+      if (!log || !log.wpPostId) {
+        await sendWhatsAppMessage(instanceName, remoteJid, `❌ Impossible de trouver cet article dans l'historique.`);
+        return NextResponse.json({ status: 'not_found' });
+      }
+
+      const success = await changeWordPressPostStatus(log.website, log.wpPostId, 'publish');
+      if (success) {
+        await sendWhatsAppMessage(instanceName, remoteJid, `✅ L'article a été publié avec succès !`);
+      } else {
+        await sendWhatsAppMessage(instanceName, remoteJid, `⚠️ Échec de la publication sur WordPress.`);
+      }
+      return NextResponse.json({ status: 'published' });
+    }
+
+    // 6.c Commande /info <lien>
+    const infoMatch = text.match(/^\/info\s+(https?:\/\/[^\s]+)/i);
+    if (infoMatch) {
+      const targetUrl = infoMatch[1].trim();
+      const log = await prisma.articleLog.findFirst({
+        where: { wpPostUrl: targetUrl },
+        include: { website: true }
+      });
+
+      if (!log || !log.wpPostId) {
+        await sendWhatsAppMessage(instanceName, remoteJid, `❌ Impossible de trouver cet article dans l'historique.`);
+        return NextResponse.json({ status: 'not_found' });
+      }
+
+      const info = await getWordPressPostInfo(log.website, log.wpPostId);
+      if (info) {
+        const statusMap: any = { publish: '✅ Publié', draft: '📝 Brouillon', trash: '🗑️ Corbeille', future: '📅 Planifié' };
+        const statusEmoji = statusMap[info.status] || info.status;
+        await sendWhatsAppMessage(instanceName, remoteJid, `ℹ️ *Informations Article :*\n\n📌 *Titre :* ${info.title}\n📊 *Statut :* ${statusEmoji}\n🔗 *Lien :* ${info.link}`);
+      } else {
+        await sendWhatsAppMessage(instanceName, remoteJid, `⚠️ Impossible de récupérer les informations depuis WordPress.`);
+      }
+      return NextResponse.json({ status: 'info_sent' });
     }
 
     // 7. Commande /direct [site]

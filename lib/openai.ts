@@ -41,11 +41,46 @@ Génère aussi 3 à 5 tags (étiquettes) pertinents pour l'article en ${params.l
 SEO_META:{"title":"...","metadesc":"...","focuskw":"...","categoryIds":[...],"tags":["..."]}
 ${params.customPrompt || ''}`.trim();
 
-  const user = params.newsContext
-    ? `Rédige un article complet sur ce sujet d'actualité :\n\n${params.newsContext}\n\nSujet : ${params.topic}`
-    : `Rédige un article complet et informatif sur : ${params.topic}`;
+    const user = params.newsContext
+      ? `Rédige un article complet sur ce sujet d'actualité :\n\n${params.newsContext}\n\nSujet : ${params.topic}`
+      : `Rédige un article complet et informatif sur : ${params.topic}`;
 
-  return { system, user };
+    return { system, user };
+  } else {
+    const system = `You are an expert journalist and SEO specialist for "${websiteTheme}".
+Your task is to interpret the user's raw input and reformulate it into a professional, high-quality news article.
+
+IMPORTANT:
+- If the user provides a specific title (e.g., "Title: My Article"), use it as the base for the SEO title.
+- If the user provides specific keywords or categories, respect them.
+- Format the article with professional HTML (<h2>, <p>).
+- Always translate the final content into ${params.language}.
+- Ensure the tone is ${params.tone}.
+- Adhere to the website theme: ${websiteTheme}.
+
+Format your response as a valid JSON object:
+{
+  "seo": { "title": "...", "metadesc": "...", "focuskw": "...", "tags": ["...", "..."], "category": "..." },
+  "html": "...",
+  "suggested_image_prompt": "..."
+}`;
+    const user = `Interpret and reformulate the following input into a complete, professional article:
+
+---
+${params.manualInput}
+---
+
+Include:
+1. SEO Title (optimized)
+2. Meta-description
+3. Focus Keyword
+4. Content in valid HTML.
+5. 5-10 tags.
+6. A category recommendation from: ${categoryNames}.
+
+Return ONLY JSON.`;
+    return { system, user };
+  }
 }
 
 export function parseArticleResponse(raw: string): {

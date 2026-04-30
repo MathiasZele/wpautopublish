@@ -207,7 +207,7 @@ export async function fetchWordPressCategories(
 export async function changeWordPressPostStatus(
   website: Website,
   postId: number,
-  status: 'draft' | 'trash'
+  status: 'draft' | 'trash' | 'publish'
 ): Promise<boolean> {
   const baseUrl = website.url.replace(/\/$/, '');
   const username = website.wpUsername;
@@ -220,7 +220,7 @@ export async function changeWordPressPostStatus(
 
   if (status === 'trash') {
     method = 'DELETE'; // WP API uses DELETE to move to trash
-    body = ''; // DELETE requests usually don't need body for this
+    body = ''; 
   }
 
   const res = await fetch(url, {
@@ -238,4 +238,26 @@ export async function changeWordPressPostStatus(
   }
 
   return true;
+}
+
+export async function getWordPressPostInfo(
+  website: Website,
+  postId: number
+): Promise<{ status: string; title: string; link: string } | null> {
+  const baseUrl = website.url.replace(/\/$/, '');
+  const username = website.wpUsername;
+  const appPassword = decrypt(website.wpAppPassword);
+  const auth = `Basic ${Buffer.from(`${username}:${appPassword}`).toString('base64')}`;
+
+  const res = await fetch(`${baseUrl}/wp-json/wp/v2/posts/${postId}`, {
+    headers: { Authorization: auth },
+  });
+
+  if (!res.ok) return null;
+  const data = await res.json();
+  return {
+    status: data.status,
+    title: data.title.rendered,
+    link: data.link,
+  };
 }
