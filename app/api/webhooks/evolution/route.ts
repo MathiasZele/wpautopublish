@@ -18,7 +18,22 @@ export async function POST(req: NextRequest) {
     const instanceName = body.instance;
     const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
 
+    // Security: Allowlist — ignore messages from unauthorized numbers
+    const allowedNumbers = (process.env.ALLOWED_WHATSAPP_NUMBERS || '')
+      .split(',')
+      .map(n => n.trim())
+      .filter(Boolean);
+
+    if (allowedNumbers.length > 0) {
+      // remoteJid format: "33612345678@s.whatsapp.net"
+      const senderNumber = remoteJid.replace(/@.+$/, '');
+      if (!allowedNumbers.includes(senderNumber)) {
+        return NextResponse.json({ status: 'unauthorized' });
+      }
+    }
+
     if (!text) return NextResponse.json({ status: 'no_text' });
+
     const lowText = text.toLowerCase();
 
     // 1. Commande /help

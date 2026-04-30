@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Globe, Send, History, LogOut } from 'lucide-react';
+import { LayoutDashboard, Globe, Send, History, LogOut, MessageCircle } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 
 const links = [
@@ -10,6 +10,7 @@ const links = [
   { href: '/sites', label: 'Sites', icon: Globe },
   { href: '/publish', label: 'Publier', icon: Send },
   { href: '/history', label: 'Historique', icon: History },
+  { href: '/whatsapp', label: 'WhatsApp', icon: MessageCircle },
 ];
 
 export function Sidebar({ userEmail }: { userEmail?: string | null }) {
