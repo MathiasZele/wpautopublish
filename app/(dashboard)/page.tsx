@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Globe, FileText, Coins, Zap, ExternalLink, Send, Newspaper, Image as ImageIcon } from 'lucide-react';
+import { Globe, FileText, Coins, Zap, ExternalLink, Send, Newspaper, History, Image as ImageIcon } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { StatsCard } from '@/components/ui/StatsCard';
