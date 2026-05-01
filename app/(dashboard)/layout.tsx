@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { Sidebar } from '@/components/dashboard/Sidebar';
 import { MobileNav } from '@/components/dashboard/MobileNav';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
