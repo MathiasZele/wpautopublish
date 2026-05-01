@@ -175,7 +175,8 @@ export async function POST(req: NextRequest) {
     if (lowText.startsWith('/help') || lowText.startsWith('/aide')) {
       const help = `Menu Aide *WP-AUTOPUBLISH* by *NZM* 😎🦦
 
-/post [nb] [site] [brouillon] : Publie X articles
+/post [nb] [site] [cats] [brouillon] : Publie X articles
+/cats [site] : Liste les catégories d'un site
 /direct [site] : Publie un article à partir de votre texte
 /publier [lien] : Publie un article qui est en brouillon
 /supprimer [lien] : Met l'article à la corbeille WP
@@ -186,7 +187,7 @@ export async function POST(req: NextRequest) {
 /vider-historique : Vide l'historique WhatsApp
 /stop : Annule l'action en cours
 
-Exemple : \`/post 5 iBusiness brouillon\``;
+Exemple : \`/post 5 iBusiness 12,45 brouillon\``;
       await sendWhatsAppMessage(instanceName, remoteJid, help);
       return NextResponse.json({ status: 'help_sent' });
     }
@@ -210,6 +211,42 @@ Exemple : \`/post 5 iBusiness brouillon\``;
         await sendWhatsAppMessage(instanceName, remoteJid, `📑 *Vos sites connectés :*\n\n${list}`);
       }
       return NextResponse.json({ status: 'sites_listed' });
+    }
+
+    // 2.b Commande /cats [site]
+    const catsMatch = text.match(/^\/cats\s+(.+)/i);
+    if (catsMatch) {
+      const siteQuery = catsMatch[1].trim();
+      const websites = await prisma.website.findMany();
+      const website = websites.find(w => 
+        w.name.toLowerCase().includes(siteQuery.toLowerCase()) || 
+        siteQuery.toLowerCase().includes(w.name.toLowerCase())
+      );
+
+      if (!website) {
+        await sendWhatsAppMessage(instanceName, remoteJid, `❌ Site "${siteQuery}" non trouvé.`);
+        return NextResponse.json({ status: 'site_not_found' });
+      }
+
+      await sendWhatsAppMessage(instanceName, remoteJid, `⏳ Récupération des catégories pour *${website.name}*...`);
+      
+      try {
+        const cats = await fetchWordPressCategories(
+          website.url, 
+          website.wpUsername, 
+          decrypt(website.wpAppPassword)
+        );
+
+        if (cats.length === 0) {
+          await sendWhatsAppMessage(instanceName, remoteJid, `📪 Aucune catégorie trouvée sur ce site.`);
+        } else {
+          const list = cats.map(c => `• *${c.id}* : ${c.name}`).join('\n');
+          await sendWhatsAppMessage(instanceName, remoteJid, `📂 *Catégories pour ${website.name} :*\n\n${list}\n\n_Utilisez ces IDs dans la commande /post._`);
+        }
+      } catch (e: any) {
+        await sendWhatsAppMessage(instanceName, remoteJid, `⚠️ Erreur lors de la récupération : ${e.message}`);
+      }
+      return NextResponse.json({ status: 'cats_listed' });
     }
 
     // 3. Commande /status
@@ -383,12 +420,17 @@ Exemple : \`/post 5 iBusiness brouillon\``;
     }
 
     // 8. Commande /post (ou ancienne syntaxe)
-    const postMatch = text.match(/^\/post\s+(\d+)\s+(.+?)(?:\s+(brouillon|draft))?$/i);
+    const postMatch = text.match(/^\/post\s+(\d+)\s+(.+?)(?:\s+([\d,]+))?(?:\s+(brouillon|draft))?$/i);
     
     if (postMatch) {
       const count = Math.min(parseInt(postMatch[1]), 20); // Cap à 20 articles
       const siteQuery = postMatch[2].trim();
-      const isDraftMode = !!postMatch[3];
+      const catIdsString = postMatch[3];
+      const isDraftMode = !!postMatch[4];
+
+      const categoryIds = catIdsString 
+        ? catIdsString.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
+        : [];
 
       const websites = await prisma.website.findMany();
       const website = websites.find(w => 
@@ -416,7 +458,8 @@ Exemple : \`/post 5 iBusiness brouillon\``;
         await articleQueue.add('auto-article', {
           websiteId: website.id,
           mode: 'AUTO',
-          autoCategorize: true,
+          autoCategorize: categoryIds.length === 0, // Auto seulement si pas de catégories choisies
+          categoryIds: categoryIds,
           draftMode: isDraftMode,
           whatsAppRequestId: waRequest.id,
           articleIndex: i

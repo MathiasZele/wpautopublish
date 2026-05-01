@@ -235,7 +235,16 @@ export const articleWorker = new Worker<ArticleJobData>(
           website.wpUsername,
           decrypt(website.wpAppPassword)
         );
-        availableCategories = wpCats.map((c) => ({ id: c.id, name: c.name }));
+        
+        // Si l'utilisateur a déjà choisi une liste de catégories, on restreint le choix de l'IA à cette liste
+        if (categoryIds && categoryIds.length > 0) {
+          availableCategories = wpCats
+            .filter(c => categoryIds.includes(c.id))
+            .map((c) => ({ id: c.id, name: c.name }));
+        } else {
+          // Sinon, l'IA choisit parmi toutes les catégories du site
+          availableCategories = wpCats.map((c) => ({ id: c.id, name: c.name }));
+        }
       } catch (e) {
         console.error('Failed to fetch WP categories', e);
       }
@@ -328,19 +337,26 @@ export const articleWorker = new Worker<ArticleJobData>(
         where: { id: whatsAppRequestId },
         data: {
           successCount: { increment: 1 },
-          articleLinks: { push: result.url }
+          articleLinks: { push: result.url },
+          articleSummaries: { push: seo.metadesc || '' }
         }
       });
 
       if (updatedRequest.successCount + updatedRequest.failedCount >= updatedRequest.totalCount) {
-        const links = updatedRequest.articleLinks.map((l) => `🔗 ${l}`).join('\n');
+        const items = updatedRequest.articleLinks.map((l, i) => {
+          const summary = updatedRequest.articleSummaries[i];
+          const summaryText = (draftMode && summary) ? `\n   _Résumé : ${summary}_` : '';
+          return `🔗 ${l}${summaryText}`;
+        }).join('\n\n');
+
         const message = `🏁 *Batch terminé pour ${website.name}*
+${draftMode ? '_Articles enregistrés en BROUILLON_' : ''}
 
 ✅ Réussis: ${updatedRequest.successCount}
 ❌ Échecs: ${updatedRequest.failedCount}
 
-*Articles publiés :*
-${links || '_Aucun article publié_'}`;
+*Articles :*
+${items || '_Aucun article publié_'}`;
 
         await sendWhatsAppMessage(updatedRequest.instanceId, updatedRequest.senderJid, message);
         
@@ -352,10 +368,13 @@ ${links || '_Aucun article publié_'}`;
     } else if (senderJid && instanceId) {
       // Notification directe pour /direct ou posts manuels unitaires
       console.log(`Sending direct notification to ${senderJid} on instance ${instanceId}`);
-      const message = `✅ *Article publié avec succès !*
+      const statusStr = draftMode ? 'enregistré en *BROUILLON*' : 'publié avec succès';
+      const summaryStr = (draftMode && seo.metadesc) ? `\n\n📝 *Résumé :* ${seo.metadesc}` : '';
+      
+      const message = `✅ *Article ${statusStr} !*
       
 📌 *Titre :* ${seo.title || topic}
-🔗 *Lien :* ${result.url}`;
+🔗 *Lien :* ${result.url}${summaryStr}`;
       await sendWhatsAppMessage(instanceId, senderJid, message);
     } else {
       console.log('No WhatsApp notification sent (no whatsAppRequestId and no senderJid/instanceId)');
@@ -401,14 +420,22 @@ articleWorker.on('failed', async (job, err) => {
       if (updatedRequest.successCount + updatedRequest.failedCount >= updatedRequest.totalCount) {
         const website = await prisma.website.findUnique({ where: { id: job.data.websiteId } });
         const websiteName = website ? website.name : 'le site';
-        const links = updatedRequest.articleLinks.map((l) => `🔗 ${l}`).join('\n');
+        const draftMode = job.data.draftMode;
+
+        const items = updatedRequest.articleLinks.map((l, i) => {
+          const summary = updatedRequest.articleSummaries[i];
+          const summaryText = (draftMode && summary) ? `\n   _Résumé : ${summary}_` : '';
+          return `🔗 ${l}${summaryText}`;
+        }).join('\n\n');
+
         const message = `🏁 *Batch terminé pour ${websiteName}*
+${draftMode ? '_Articles enregistrés en BROUILLON_' : ''}
 
 ✅ Réussis: ${updatedRequest.successCount}
 ❌ Échecs: ${updatedRequest.failedCount}
 
-*Articles publiés :*
-${links || '_Aucun article publié_'}`;
+*Articles :*
+${items || '_Aucun article publié_'}`;
 
         await sendWhatsAppMessage(updatedRequest.instanceId, updatedRequest.senderJid, message);
         

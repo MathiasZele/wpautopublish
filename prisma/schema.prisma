@@ -149,8 +149,9 @@ model WhatsAppRequest {
   totalCount   Int
   successCount Int      @default(0)
   failedCount  Int      @default(0)
-  articleLinks String[] @default([])
-  status       String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  articleLinks     String[] @default([])
+  articleSummaries String[] @default([])
+  status           String   @default("PENDING") // PENDING, COMPLETED, FAILED
   createdAt    DateTime @default(now())
 }
 

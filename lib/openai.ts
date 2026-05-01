@@ -94,13 +94,35 @@ export function parseArticleResponse(raw: string): {
   html: string;
   seo: { title: string; metadesc: string; focuskw: string; categoryIds?: number[]; tags?: string[] };
 } {
+  // 1. Try to see if the whole thing is JSON (manual mode)
+  if (raw.trim().startsWith('{') && raw.trim().endsWith('}')) {
+    try {
+      const data = JSON.parse(raw);
+      if (data.seo && data.html) {
+        return {
+          html: data.html,
+          seo: {
+            title: data.seo.title || '',
+            metadesc: data.seo.metadesc || '',
+            focuskw: data.seo.focuskw || '',
+            tags: data.seo.tags || [],
+            categoryIds: data.seo.categoryIds || []
+          }
+        };
+      }
+    } catch {
+      // Not JSON, continue to SEO_META
+    }
+  }
+
+  // 2. Standard mode with SEO_META marker
   const seoMatch = raw.match(/SEO_META:(\{.*?\})/);
   let seo: any = { title: '', metadesc: '', focuskw: '', categoryIds: [], tags: [] };
   if (seoMatch) {
     try {
       seo = JSON.parse(seoMatch[1]);
     } catch {
-      // ignore parse errors, return empty seo
+      // ignore parse errors
     }
   }
   const html = raw.replace(/SEO_META:\{.*?\}/, '').trim();

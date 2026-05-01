@@ -30,7 +30,7 @@ export function AutoRunForm({ sites }: { sites: PublishSite[] }) {
       body: JSON.stringify({
         count,
         spacingSeconds: spacing,
-        categoryIds: autoCategorize ? [] : selectedCats,
+        categoryIds: selectedCats,
         autoCategorize,
       }),
     });
@@ -117,16 +117,28 @@ export function AutoRunForm({ sites }: { sites: PublishSite[] }) {
           className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
         />
         <label htmlFor="autoCategorize" className="text-sm font-medium text-gray-700 cursor-pointer">
-          Laisser l'IA choisir la catégorie et les tags automatiquement
+          Laisser l'IA choisir la meilleure catégorie (Intelligent)
         </label>
       </div>
 
-      {websiteId && !autoCategorize && (
-        <CategoryPicker
-          siteId={websiteId}
-          selected={selectedCats}
-          onChange={setSelectedCats}
-        />
+      {websiteId && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            {autoCategorize 
+              ? "Restreindre le choix de l'IA à ces catégories (optionnel)" 
+              : "Catégories forcées"}
+          </label>
+          <CategoryPicker
+            siteId={websiteId}
+            selected={selectedCats}
+            onChange={setSelectedCats}
+          />
+          {autoCategorize && selectedCats.length === 0 && (
+            <p className="text-xs text-gray-500 italic">
+              Aucune sélection : l'IA piochera dans toutes les catégories du site.
+            </p>
+          )}
+        </div>
       )}
 
       <div className="text-xs text-gray-500 bg-gray-50 border rounded-lg p-3 space-y-1">
