@@ -67,6 +67,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'no_content' });
     }
 
+    // Ignorer les messages de groupes/broadcasts AVANT toute requête DB (économise latence + bruit logs)
+    if (typeof remoteJid === 'string' && (remoteJid.endsWith('@g.us') || remoteJid.endsWith('@broadcast'))) {
+      return NextResponse.json({ status: 'ignored_group' });
+    }
+
+    // Ignorer les messages de soi-même (fromMe = true)
+    if (message.key?.fromMe === true) {
+      return NextResponse.json({ status: 'ignored_self' });
+    }
+
     // Security: Allowlist — check against DB-managed allowed numbers
     console.log('Checking allowlist...');
     const allowedNumbers = await prisma.whatsAppAllowedNumber.findMany({ select: { phoneNumber: true } });
