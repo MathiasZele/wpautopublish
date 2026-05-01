@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getArticleQueue } from '@/lib/queue';
 import { sendWhatsAppMessage, getMediaBase64 } from '@/lib/evolution';
-import { changeWordPressPostStatus, getWordPressPostInfo } from '@/lib/wordpress';
+import { changeWordPressPostStatus, getWordPressPostInfo, fetchWordPressCategories } from '@/lib/wordpress';
 import { uploadImageFromBuffer } from '@/lib/cloudinary';
+import { decrypt } from '@/lib/encryption';
 
 export async function POST(req: NextRequest) {
   try {
@@ -429,7 +430,7 @@ Exemple : \`/post 5 iBusiness 12,45 brouillon\``;
       const isDraftMode = !!postMatch[4];
 
       const categoryIds = catIdsString 
-        ? catIdsString.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
+        ? catIdsString.split(',').map((id: string) => parseInt(id.trim())).filter((id: number) => !isNaN(id))
         : [];
 
       const websites = await prisma.website.findMany();
