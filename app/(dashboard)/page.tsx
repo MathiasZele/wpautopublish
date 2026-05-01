@@ -64,21 +64,21 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
+    <div className="space-y-8 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-slide-up">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-gray-500 text-sm">Vue d'ensemble de votre activité</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-outfit">Dashboard</h1>
+          <p className="text-slate-500 text-sm mt-1">Vue d'ensemble de votre activité automatisée</p>
         </div>
         <Link
           href="/publish"
-          className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          className="inline-flex items-center justify-center gap-2 premium-gradient hover:opacity-90 text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-brand-200 transition-all active:scale-95"
         >
-          <Send size={14} /> Publier
+          <Send size={16} /> Publier un article
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up [animation-delay:100ms]">
         <StatsCard label="Sites actifs" value={activeSites} icon={Globe} />
         <StatsCard label="Articles publiés" value={totalArticles} icon={FileText} />
         <StatsCard label="Tokens ce mois" value={monthTokens.toLocaleString()} icon={Zap} />
@@ -90,13 +90,18 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <TokenChart data={chartData} />
+      <div className="animate-slide-up [animation-delay:200ms]">
+        <TokenChart data={chartData} />
+      </div>
 
-      <div className="bg-white rounded-xl border">
-        <div className="p-6 border-b flex items-center justify-between">
-          <h3 className="font-semibold">Activité récente</h3>
-          <Link href="/history" className="text-xs text-brand-600 hover:underline">
-            Voir tout →
+      <div className="card-premium animate-slide-up [animation-delay:300ms]">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+          <h3 className="font-bold text-slate-900 font-outfit flex items-center gap-2">
+            <History size={18} className="text-brand-500" />
+            Activité récente
+          </h3>
+          <Link href="/history" className="text-xs font-semibold text-brand-600 hover:text-brand-700 bg-brand-50 px-3 py-1.5 rounded-full transition-colors">
+            Voir tout l'historique →
           </Link>
         </div>
         {recent.length === 0 ? (

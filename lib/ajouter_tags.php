@@ -10,6 +10,11 @@ function am_add_tags_to_existing_drafts() {
         return;
     }
 
+    // Sécurité CRITIQUE : vérifier que l'utilisateur est un administrateur connecté
+    if ( !current_user_can('manage_options') ) {
+        wp_die("Accès refusé : vous devez être administrateur pour exécuter ce script.", "Erreur de sécurité", array('response' => 403));
+    }
+
     // Récupérer tous les articles en statut 'brouillon'
     $args = array(
         'post_type'      => 'post',

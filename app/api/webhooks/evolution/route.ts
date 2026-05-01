@@ -7,6 +7,14 @@ import { uploadImageFromBuffer } from '@/lib/cloudinary';
 
 export async function POST(req: NextRequest) {
   try {
+    const secret = process.env.EVOLUTION_WEBHOOK_SECRET;
+    const authHeader = req.headers.get('apikey') || req.headers.get('authorization');
+    
+    if (secret && authHeader !== secret && authHeader !== `Bearer ${secret}`) {
+      console.warn('Webhook unauthorized: Invalid secret token provided');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     
     // Evolution API typical message structure

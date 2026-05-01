@@ -12,13 +12,20 @@ export function StatsCard({
   hint?: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border p-6">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm text-gray-500">{label}</span>
-        <Icon size={20} className="text-brand-500" />
+    <div className="card-premium p-6 group">
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-sm font-medium text-slate-500">{label}</span>
+        <div className="p-2 bg-brand-50 rounded-lg text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-colors duration-300">
+          <Icon size={20} />
+        </div>
       </div>
-      <div className="text-3xl font-bold">{value}</div>
-      {hint && <div className="text-xs text-gray-400 mt-1">{hint}</div>}
+      <div className="text-3xl font-bold text-slate-900 font-outfit">{value}</div>
+      {hint && (
+        <div className="flex items-center gap-1.5 mt-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          <span className="text-xs font-medium text-slate-400">{hint}</span>
+        </div>
+      )}
     </div>
   );
 }

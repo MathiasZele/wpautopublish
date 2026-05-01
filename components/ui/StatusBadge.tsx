@@ -1,10 +1,10 @@
 const styles: Record<string, string> = {
-  ACTIVE: 'bg-green-100 text-green-700',
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  ERROR: 'bg-red-100 text-red-700',
-  PAUSED: 'bg-gray-100 text-gray-700',
-  SUCCESS: 'bg-green-100 text-green-700',
-  FAILED: 'bg-red-100 text-red-700',
+  ACTIVE: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  PENDING: 'bg-amber-50 text-amber-700 border-amber-100',
+  ERROR: 'bg-rose-50 text-rose-700 border-rose-100',
+  PAUSED: 'bg-slate-50 text-slate-700 border-slate-100',
+  SUCCESS: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  FAILED: 'bg-rose-50 text-rose-700 border-rose-100',
 };
 
 const labels: Record<string, string> = {
@@ -16,11 +16,23 @@ const labels: Record<string, string> = {
   FAILED: 'Échec',
 };
 
+const dots: Record<string, string> = {
+  ACTIVE: 'bg-emerald-500',
+  PENDING: 'bg-amber-500',
+  ERROR: 'bg-rose-500',
+  PAUSED: 'bg-slate-400',
+  SUCCESS: 'bg-emerald-500',
+  FAILED: 'bg-rose-500',
+};
+
 export function StatusBadge({ status }: { status: string }) {
-  const cls = styles[status] ?? 'bg-gray-100 text-gray-700';
+  const cls = styles[status] ?? 'bg-slate-50 text-slate-700 border-slate-100';
   const lbl = labels[status] ?? status;
+  const dot = dots[status] ?? 'bg-slate-400';
+  
   return (
-    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot} animate-pulse`} />
       {lbl}
     </span>
   );
