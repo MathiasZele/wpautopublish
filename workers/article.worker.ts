@@ -308,11 +308,32 @@ export const articleWorker = new Worker<ArticleJobData>(
 
     const raw = completion.choices[0].message.content ?? '';
     const parsed = parseArticleResponse(raw); // throw si malformé
-    const { html: rawHtml, seo, languageCheck } = parsed;
+    let { html: rawHtml, seo, languageCheck } = parsed;
 
     // Filet de sécurité langue : si l'IA déclare avoir écrit dans une autre langue, on échoue net
     if (languageCheck && languageCheck !== profile.language.toLowerCase()) {
       throw new Error(`Langue incorrecte : attendu "${profile.language}", IA a renvoyé "${languageCheck}"`);
+    }
+
+    // Garde-fou : l'IA renvoie parfois 10+ catégories alors qu'on en veut 1-3 max
+    if (seo.categoryIds && seo.categoryIds.length > 3) {
+      console.warn(`[worker] ${seo.categoryIds.length} catégories retournées par l'IA, on tronque à 3`);
+      seo.categoryIds = seo.categoryIds.slice(0, 3);
+    }
+
+    // Garde-fou : retire un éventuel <h2>Conclusion</h2> ajouté en violation de la consigne
+    rawHtml = rawHtml.replace(/<h2[^>]*>\s*conclusion\s*<\/h2>/gi, '');
+
+    // Garde-fou : si la source n'est pas mentionnée dans le corps malgré la directive,
+    // on l'injecte en fin d'article pour respecter la traçabilité éditoriale.
+    if (resolvedSource?.sourceName && resolvedSource?.sourceUrl) {
+      const lowerHtml = rawHtml.toLowerCase();
+      const lowerSource = resolvedSource.sourceName.toLowerCase();
+      if (!lowerHtml.includes(lowerSource)) {
+        console.warn(`[worker] Source "${resolvedSource.sourceName}" non mentionnée par l'IA, injection auto`);
+        const sourceLine = `<p><em>Source : <a href="${resolvedSource.sourceUrl}" target="_blank" rel="noopener noreferrer">${resolvedSource.sourceName}</a></em></p>`;
+        rawHtml = rawHtml.trim() + '\n' + sourceLine;
+      }
     }
 
     const html = sanitizeArticleHtml(rawHtml);

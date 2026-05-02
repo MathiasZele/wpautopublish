@@ -67,14 +67,18 @@ INTERDITS DANS LE CORPS DE L'ARTICLE :
   Les listes en wrapper redondant (du type "Voici les points :"). Aller direct au contenu.
 
 STRUCTURE OBLIGATOIRE :
-  1. Une introduction (1 paragraphe <p>, 80-120 mots) qui pose le contexte sans répéter le titre.
-  2. 4 à 6 sections, chacune avec un <h2>. Sous chaque <h2>, 2 à 3 paragraphes <p> de 100-180 mots, plus optionnellement <h3> ou <ul>.
-  3. Une conclusion (1 paragraphe <p>, 80-120 mots).
+  1. Introduction : 1 paragraphe <p> de 100-150 mots. Pose le contexte, l'enjeu, sans répéter le titre.
+  2. Corps : 4 à 6 sections, chacune avec un <h2>. Sous chaque <h2>, 2 à 3 paragraphes <p>.
+     Chaque section doit faire AU MINIMUM 180 mots, idéalement 220.
+     Tu peux ajouter <h3> ou <ul> pour structurer une section longue.
+  3. Conclusion : 1 paragraphe <p> de 100-150 mots, SANS balise <h2>. Ne mets JAMAIS un <h2>Conclusion</h2>.
+     Démarre la conclusion directement par le contenu (ex: "En définitive, ...").
 
-LONGUEUR CIBLE STRICTE : 800 à 1100 mots de contenu réel (texte hors balises).
-  - C'est un MINIMUM, pas un maximum souple.
-  - Un article < 700 mots est REJETÉ par notre éditeur — développe chaque section avec des explications, du contexte, des nuances.
-  - Ne sacrifie pas la profondeur. Si une section est courte, étoffe-la avec : conséquences, parties prenantes, contexte historique, perspectives.
+LONGUEUR CIBLE STRICTE : 900 à 1100 mots de contenu réel (texte hors balises).
+  - Un article < 800 mots est REJETÉ — il manque de profondeur.
+  - Compte mentalement : intro (120) + 5 sections × 200 mots (1000) + conclusion (120) ≈ 1240 mots.
+  - Étoffe chaque section avec : contexte historique, conséquences, parties prenantes, citations indirectes, comparaisons, perspectives. Va au-delà du résumé du contexte source.
+  - Ne fais PAS de listes à puces sèches qui réduisent le compte de mots — préfère les paragraphes développés.
 
 CONTRAINTES FACTUELLES (anti-hallucination) :
   - N'invente jamais de chiffres, dates, citations, noms de personnes ou d'entreprises qui ne sont pas présents dans le contexte source fourni.
