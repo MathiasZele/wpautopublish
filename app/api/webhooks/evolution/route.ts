@@ -183,24 +183,11 @@ export async function POST(req: NextRequest) {
 
     const lowText = text.toLowerCase();
 
-    // 1. Commande /help
-    if (lowText.startsWith('/help') || lowText.startsWith('/aide')) {
-      const help = `Menu Aide *WP-AUTOPUBLISH* by *NZM* 😎🦦
-
-/post [nb] [site] [cats] [brouillon] : Publie X articles
-/cats [site] : Liste les catégories d'un site
-/direct [site] : Publie un article via IA (reformulation)
-/format [site] : Met en page votre texte sans le modifier
-/publier [lien] : Publie un article qui est en brouillon
-/supprimer [lien] : Met l'article à la corbeille WP
-/brouillon [lien] : Repasse l'article en brouillon WP
-/info [lien] : Affiche l'état d'un article
-/sites : Liste vos sites connectés
-/status : État des dernières requêtes
-/vider-historique : Vide l'historique WhatsApp
-/stop : Annule l'action en cours
-
-Exemple : \`/post 5 iBusiness 12,45 brouillon\``;
+    // 1. Commande /help [commande]
+    const helpMatch = text.match(/^\/(?:help|aide)(?:\s+\/?(\S+))?/i);
+    if (helpMatch) {
+      const sub = (helpMatch[1] || '').toLowerCase().replace(/^\//, '');
+      const help = sub ? buildCommandHelp(sub) : buildHelpMenu();
       await sendWhatsAppMessage(instanceName, remoteJid, help);
       return NextResponse.json({ status: 'help_sent' });
     }
@@ -514,4 +501,176 @@ Exemple : \`/post 5 iBusiness 12,45 brouillon\``;
     console.error('Webhook error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+// ─── AIDE WHATSAPP ───────────────────────────────────────────────────────────
+
+interface CommandDoc {
+  syntax: string;
+  description: string;
+  examples: string[];
+  notes?: string[];
+}
+
+const COMMAND_HELP: Record<string, CommandDoc> = {
+  post: {
+    syntax: '/post [nb] [site] [catégories] [brouillon]',
+    description: 'Génère et publie automatiquement N articles à partir des actualités récentes (NewsAPI, GNews, Mediastack, Guardian).',
+    examples: [
+      '/post 3 iBusiness',
+      '/post 5 iBusiness 12,45',
+      '/post 2 iBusiness 12 brouillon',
+    ],
+    notes: [
+      '`nb` : entre 1 et 20',
+      '`site` : nom (ou partie du nom) du site, ex. `iBusiness`',
+      '`catégories` (optionnel) : IDs séparés par des virgules. Sans, l\'IA choisit. Liste-les avec `/cats`',
+      '`brouillon` (optionnel) : ajoute ce mot pour mettre les articles en brouillon WP au lieu de les publier',
+    ],
+  },
+
+  cats: {
+    syntax: '/cats [site]',
+    description: 'Liste toutes les catégories WordPress du site avec leurs IDs (utiles pour `/post`).',
+    examples: ['/cats iBusiness'],
+  },
+
+  direct: {
+    syntax: '/direct [site]',
+    description: 'Démarre un dialogue : tu envoies du texte (ou un titre), l\'IA reformule en article SEO complet et publie.',
+    examples: ['/direct iBusiness'],
+    notes: [
+      'Étape 1 : tu envoies `/direct iBusiness`',
+      'Étape 2 : tu envoies ton brief (texte, idée, titre)',
+      'Étape 3 : tu envoies une image, ou une URL d\'image, ou tape `auto` pour que l\'IA en cherche une',
+      'Annuler à tout moment avec `/stop`',
+    ],
+  },
+
+  format: {
+    syntax: '/format [site]',
+    description: 'Comme `/direct` mais l\'IA NE REFORMULE PAS — elle met juste ton texte en HTML propre + génère le SEO. Idéal pour publier un texte que tu as déjà rédigé.',
+    examples: ['/format iBusiness'],
+    notes: [
+      'Étape 1 : tu envoies `/format iBusiness`',
+      'Étape 2 : tu envoies le texte exact à publier',
+      'Étape 3 : image ou URL ou `auto`',
+      'Le contenu n\'est PAS modifié, seulement structuré.',
+    ],
+  },
+
+  publier: {
+    syntax: '/publier [lien]',
+    description: 'Repasse un article actuellement en brouillon ou corbeille en statut "publié" sur WordPress.',
+    examples: ['/publier https://ibusiness.africa/?p=3979'],
+  },
+
+  brouillon: {
+    syntax: '/brouillon [lien]',
+    description: 'Remet un article publié en brouillon sur WordPress (le retire du site public).',
+    examples: ['/brouillon https://ibusiness.africa/?p=3979'],
+  },
+
+  supprimer: {
+    syntax: '/supprimer [lien]',
+    description: 'Met l\'article à la corbeille WordPress (récupérable 30 jours par défaut).',
+    examples: ['/supprimer https://ibusiness.africa/?p=3979'],
+  },
+
+  info: {
+    syntax: '/info [lien]',
+    description: 'Affiche le titre et le statut actuel (publié / brouillon / corbeille / planifié) d\'un article.',
+    examples: ['/info https://ibusiness.africa/?p=3979'],
+  },
+
+  sites: {
+    syntax: '/sites',
+    description: 'Liste tous les sites WordPress connectés à ton compte avec leur état (✅ actif / ⚠️ erreur).',
+    examples: ['/sites'],
+  },
+
+  status: {
+    syntax: '/status',
+    description: 'Affiche les 5 dernières requêtes lancées via WhatsApp, avec leur progression (terminé / en cours).',
+    examples: ['/status'],
+  },
+
+  'vider-historique': {
+    syntax: '/vider-historique',
+    description: 'Supprime tout l\'historique des requêtes WhatsApp (logs des `/post`). N\'affecte pas les articles publiés sur WP.',
+    examples: ['/vider-historique'],
+  },
+
+  stop: {
+    syntax: '/stop',
+    description: 'Annule la session multi-étapes en cours (`/direct` ou `/format`). Réinitialise.',
+    examples: ['/stop'],
+  },
+
+  help: {
+    syntax: '/help [commande]',
+    description: 'Affiche le menu d\'aide. Avec un nom de commande, donne le détail et des exemples.',
+    examples: ['/help', '/help post', '/help direct'],
+  },
+};
+
+const COMMAND_ALIASES: Record<string, string> = {
+  aide: 'help',
+  cancel: 'stop',
+  cat: 'cats',
+};
+
+function buildHelpMenu(): string {
+  return `📖 *Aide WP-AUTOPUBLISH* by *NZM* 😎🦦
+
+*Publication automatique :*
+/post [nb] [site] [cats] [brouillon]
+
+*Publication assistée IA :*
+/direct [site] — IA reformule
+/format [site] — IA formate seulement
+
+*Gérer les articles :*
+/publier [lien]
+/brouillon [lien]
+/supprimer [lien]
+/info [lien]
+
+*Infos :*
+/sites — sites connectés
+/cats [site] — catégories d'un site
+/status — dernières activités
+
+*Système :*
+/help [commande] — détail d'une commande
+/stop — annule l'action en cours
+/vider-historique
+
+💡 Tape *\`/help post\`* pour voir un exemple détaillé d'une commande.`;
+}
+
+function buildCommandHelp(name: string): string {
+  const key = COMMAND_ALIASES[name] ?? name;
+  const doc = COMMAND_HELP[key];
+  if (!doc) {
+    return `❓ Commande inconnue : *\`${name}\`*\n\nTape \`/help\` pour voir la liste des commandes disponibles.`;
+  }
+
+  const lines: string[] = [];
+  lines.push(`📘 *Aide : /${key}*`);
+  lines.push('');
+  lines.push(`*Syntaxe :*\n\`${doc.syntax}\``);
+  lines.push('');
+  lines.push(`*À quoi ça sert :*\n${doc.description}`);
+  if (doc.notes && doc.notes.length > 0) {
+    lines.push('');
+    lines.push('*Détails :*');
+    lines.push(doc.notes.map(n => `• ${n}`).join('\n'));
+  }
+  if (doc.examples.length > 0) {
+    lines.push('');
+    lines.push('*Exemple' + (doc.examples.length > 1 ? 's' : '') + ' :*');
+    lines.push(doc.examples.map(e => `\`${e}\``).join('\n'));
+  }
+  return lines.join('\n');
 }
