@@ -108,8 +108,16 @@ export async function logoutWhatsApp(instance: string): Promise<boolean> {
       method: 'DELETE',
       headers: evolutionHeaders,
     });
-    return res.ok;
-  } catch {
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`Evolution logout failed (${res.status}):`, errorText);
+      // If it returns 404, the instance might not exist or already be disconnected.
+      if (res.status === 404) return true;
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Evolution logout network error:', error);
     return false;
   }
 }

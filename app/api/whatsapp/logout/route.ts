@@ -10,7 +10,8 @@ export async function POST() {
 
   const success = await logoutWhatsApp(INSTANCE_NAME);
   if (!success) {
-    return NextResponse.json({ error: 'Logout failed' }, { status: 500 });
+    console.warn('WhatsApp logout from Evolution API failed, but continuing local logout.');
   }
+  
   return NextResponse.json({ success: true });
 }
