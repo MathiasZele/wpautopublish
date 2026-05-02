@@ -65,9 +65,17 @@ export async function getWhatsAppStatus(instance: string): Promise<InstanceStatu
  * Returns null if the instance is already connected.
  */
 export async function connectWhatsApp(instance: string): Promise<{ qrcode: string | null; pairingCode?: string | null }> {
-  // Ensure instance exists
+  // First, check the status. If it's already open, we might not need a new QR code.
+  const status = await getWhatsAppStatus(instance);
+  
+  // If it's already open, we don't return a QR code as it's already connected.
+  if (status.state === 'open') {
+    return { qrcode: null };
+  }
+
+  // Ensure instance exists or is recreated if stuck
   try {
-    await fetch(`${EVOLUTION_API_URL}/instance/create`, {
+    const createRes = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
       method: 'POST',
       headers: evolutionHeaders,
       body: JSON.stringify({
@@ -80,8 +88,14 @@ export async function connectWhatsApp(instance: string): Promise<{ qrcode: strin
         events: ['MESSAGES_UPSERT'],
       }),
     });
-  } catch {
-    // Instance may already exist — that's fine
+
+    if (!createRes.ok) {
+      const errorData = await createRes.json().catch(() => ({}));
+      // If instance already exists but is not 'open', that's fine, we continue to connect.
+      console.log(`Evolution instance create status: ${createRes.status}`, errorData);
+    }
+  } catch (error) {
+    console.error('Error creating Evolution instance:', error);
   }
 
   // Fetch QR code
@@ -90,9 +104,18 @@ export async function connectWhatsApp(instance: string): Promise<{ qrcode: strin
     cache: 'no-store',
   });
 
-  if (!res.ok) return { qrcode: null };
+  if (!res.ok) {
+    console.error(`Evolution connect failed (${res.status}):`, await res.text().catch(() => 'No body'));
+    return { qrcode: null };
+  }
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
+  
+  // If the instance is already connected, it might return { instance: { state: 'open' } }
+  if (data?.instance?.state === 'open') {
+    return { qrcode: null };
+  }
+
   return {
     qrcode: data?.base64 ?? data?.qrcode?.base64 ?? null,
     pairingCode: data?.pairingCode ?? null,
@@ -101,20 +124,35 @@ export async function connectWhatsApp(instance: string): Promise<{ qrcode: strin
 
 /**
  * Disconnects the WhatsApp session for a given instance.
+ * Tries to logout, and falls back to deleting the instance if stuck.
  */
 export async function logoutWhatsApp(instance: string): Promise<boolean> {
   try {
+    console.log(`Attempting logout for instance: ${instance}`);
     const res = await fetch(`${EVOLUTION_API_URL}/instance/logout/${instance}`, {
       method: 'DELETE',
       headers: evolutionHeaders,
     });
+    
     if (!res.ok) {
-      const errorText = await res.text();
+      const errorText = await res.text().catch(() => 'No error text');
       console.error(`Evolution logout failed (${res.status}):`, errorText);
-      // If it returns 404, the instance might not exist or already be disconnected.
-      if (res.status === 404) return true;
-      return false;
+      
+      // If logout fails (e.g., 500 Connection Closed), we try to force delete the instance
+      // to ensure the user can reconnect from scratch.
+      console.log(`Attempting force delete for instance: ${instance}`);
+      const deleteRes = await fetch(`${EVOLUTION_API_URL}/instance/delete/${instance}`, {
+        method: 'DELETE',
+        headers: { 'apikey': EVOLUTION_API_KEY },
+      });
+      
+      if (!deleteRes.ok) {
+        console.error(`Evolution delete failed (${deleteRes.status}):`, await deleteRes.text().catch(() => 'No body'));
+        return false;
+      }
+      return true;
     }
+    
     return true;
   } catch (error) {
     console.error('Evolution logout network error:', error);
