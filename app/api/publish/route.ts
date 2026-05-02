@@ -14,6 +14,7 @@ const schema = z.object({
   imageUrl: z.string().url().optional(),
   categoryIds: z.array(z.number().int()).optional(),
   autoCategorize: z.boolean().optional(),
+  formatOnly: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
     manualImageUrl: parsed.data.imageUrl,
     categoryIds: parsed.data.categoryIds,
     autoCategorize: parsed.data.autoCategorize ?? true,
+    formatOnly: parsed.data.formatOnly ?? false,
   });
 
   return NextResponse.json({ jobId: job.id, status: 'queued' }, { status: 202 });

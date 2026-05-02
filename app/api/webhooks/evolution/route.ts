@@ -164,6 +164,7 @@ export async function POST(req: NextRequest) {
           manualInput: sessionData.text,
           manualImageUrl: imageUrl,
           autoCategorize: true,
+          formatOnly: sessionData.formatOnly === true,
           senderJid: remoteJid,
           instanceId: instanceName
         });
@@ -188,7 +189,8 @@ export async function POST(req: NextRequest) {
 
 /post [nb] [site] [cats] [brouillon] : Publie X articles
 /cats [site] : Liste les catégories d'un site
-/direct [site] : Publie un article à partir de votre texte
+/direct [site] : Publie un article via IA (reformulation)
+/format [site] : Met en page votre texte sans le modifier
 /publier [lien] : Publie un article qui est en brouillon
 /supprimer [lien] : Met l'article à la corbeille WP
 /brouillon [lien] : Repasse l'article en brouillon WP
@@ -428,6 +430,31 @@ Exemple : \`/post 5 iBusiness 12,45 brouillon\``;
 
       await sendWhatsAppMessage(instanceName, remoteJid, `📝 *Mode Direct pour ${website.name}*\n\nVeuillez envoyer le texte de votre article (il sera reformulé et formaté par l'IA).`);
       return NextResponse.json({ status: 'direct_mode_started' });
+    }
+
+    // 7.b Commande /format [site]
+    const formatMatch = text.match(/^\/format\s+(.+)/i);
+    if (formatMatch) {
+      const siteQuery = formatMatch[1].trim();
+      const websites = await prisma.website.findMany();
+      const website = websites.find(w => 
+        w.name.toLowerCase().includes(siteQuery.toLowerCase()) || 
+        siteQuery.toLowerCase().includes(w.name.toLowerCase())
+      );
+
+      if (!website) {
+        await sendWhatsAppMessage(instanceName, remoteJid, `❌ Site "${siteQuery}" non trouvé.`);
+        return NextResponse.json({ status: 'site_not_found' });
+      }
+
+      await prisma.whatsAppSession.upsert({
+        where: { senderJid: remoteJid },
+        update: { step: 'WAITING_FOR_TEXT', websiteId: website.id, data: { formatOnly: true } },
+        create: { senderJid: remoteJid, step: 'WAITING_FOR_TEXT', websiteId: website.id, data: { formatOnly: true } }
+      });
+
+      await sendWhatsAppMessage(instanceName, remoteJid, `✨ *Mode Formatage pour ${website.name}*\n\nVeuillez envoyer le texte exact de votre article. L'IA le mettra en page (HTML) et générera le SEO, sans en modifier le contenu.`);
+      return NextResponse.json({ status: 'format_mode_started' });
     }
 
     // 8. Commande /post (ou ancienne syntaxe)

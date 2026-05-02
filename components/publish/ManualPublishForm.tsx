@@ -12,6 +12,7 @@ export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
   const [imageUrl, setImageUrl] = useState('');
   const [selectedCats, setSelectedCats] = useState<number[]>(sites[0]?.defaultCategoryIds ?? []);
   const [provider, setProvider] = useState('AUTO');
+  const [formatOnly, setFormatOnly] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -32,6 +33,7 @@ export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
         provider,
         imageUrl: imageUrl || undefined,
         categoryIds: selectedCats,
+        formatOnly,
       }),
     });
 
@@ -100,7 +102,8 @@ export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
         <select
           value={provider}
           onChange={(e) => setProvider(e.target.value)}
-          className="w-full px-3 py-2 border rounded-lg"
+          disabled={formatOnly}
+          className="w-full px-3 py-2 border rounded-lg disabled:opacity-50"
         >
           <option value="AUTO">🤖 Intelligent (Auto)</option>
           <option value="NewsAPI">NewsAPI</option>
@@ -111,6 +114,24 @@ export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
         <p className="text-xs text-gray-500 mt-1">
           L'orchestrateur choisira la meilleure source ou combinera les résultats si "Auto" est sélectionné.
         </p>
+      </div>
+
+      <div className="flex items-start gap-2 p-3 bg-slate-50 border rounded-lg">
+        <input
+          type="checkbox"
+          id="formatOnly"
+          checked={formatOnly}
+          onChange={(e) => setFormatOnly(e.target.checked)}
+          className="mt-1 w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
+        />
+        <div>
+          <label htmlFor="formatOnly" className="text-sm font-medium text-gray-800 cursor-pointer">
+            Ne pas reformuler, formater uniquement (Mode direct)
+          </label>
+          <p className="text-xs text-gray-500 mt-0.5">
+            L'IA conservera votre texte exact. Elle se contentera d'ajouter les balises HTML (titres, paragraphes, listes) et de générer le SEO. Idéal si vous collez un article déjà rédigé.
+          </p>
+        </div>
       </div>
 
       {websiteId && (

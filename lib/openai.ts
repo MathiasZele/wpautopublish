@@ -20,6 +20,7 @@ export function buildArticlePrompt(params: {
   availableCategories?: { id: number; name: string }[];
   websiteTheme?: string;
   manualInput?: string;
+  formatOnly?: boolean;
 }): { system: string; user: string } {
   const categoryInstruction = params.availableCategories?.length
     ? `\nChoisis 1 à 3 IDs de catégories parmi cette liste :\n${params.availableCategories.map(c => `- ID: ${c.id}, Nom: ${c.name}`).join('\n')}`
@@ -51,6 +52,33 @@ ${params.customPrompt || ''}`.trim();
       ? `Rédige un article complet sur ce sujet d'actualité :\n\n${params.newsContext}\n\nSujet : ${params.topic}`
       : `Rédige un article complet et informatif sur : ${params.topic}`;
 
+    return { system, user };
+  } else if (params.formatOnly) {
+    const system = `You are an expert web integrator and SEO specialist for "${websiteTheme}".
+Your task is STRICTLY to take the user's raw text and format it into clean HTML (<h2>, <p>, <ul>, <strong>) without rewriting, summarizing, or changing the words of the original text. You must preserve the original text exactly, only adding HTML tags for structure and readability.
+Do NOT translate the text unless requested.
+You must also generate appropriate SEO metadata based on the text.
+Format your response as a valid JSON object:
+{
+  "seo": { "title": "...", "metadesc": "...", "focuskw": "...", "tags": ["...", "..."], "category": "..." },
+  "html": "...",
+  "suggested_image_prompt": "..."
+}`;
+    const user = `Format the following text into valid HTML without changing its content, and generate SEO metadata:
+
+---
+${params.manualInput}
+---
+
+Include:
+1. SEO Title (optimized)
+2. Meta-description
+3. Focus Keyword
+4. Content in valid HTML.
+5. 5-10 tags.
+6. A category recommendation from: ${categoryNames}.
+
+Return ONLY JSON.`;
     return { system, user };
   } else {
     const system = `You are an expert journalist and SEO specialist for "${websiteTheme}".

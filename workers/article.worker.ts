@@ -259,6 +259,8 @@ export const articleWorker = new Worker<ArticleJobData>(
       newsContext: resolvedSource?.newsContext,
       availableCategories,
       websiteTheme,
+      manualInput,
+      formatOnly: job.data.formatOnly,
     });
 
     const completion = await openai.chat.completions.create({
