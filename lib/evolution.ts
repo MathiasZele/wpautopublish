@@ -100,8 +100,12 @@ export async function connectWhatsApp(instance: string): Promise<{ qrcode: strin
         instanceName: instance,
         integration: 'WHATSAPP-BAILEYS',
         qrcode: true,
-        webhook: appUrl ? `${appUrl}/api/webhooks/evolution` : undefined,
-        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
+        webhook: appUrl ? {
+          enabled: true,
+          url: `${appUrl}/api/webhooks/evolution`,
+          webhookByEvents: false,
+          events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
+        } : undefined,
       }),
     });
 
