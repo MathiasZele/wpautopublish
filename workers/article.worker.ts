@@ -299,6 +299,10 @@ export const articleWorker = new Worker<ArticleJobData>(
         ? categoryIds
         : profile.defaultCategoryIds;
 
+    console.log(`[Worker] Publication for site: ${website.name}`);
+    console.log(`[Worker] Final Categories: ${JSON.stringify(finalCategoryIds)}`);
+    console.log(`[Worker] Final Tags: ${JSON.stringify(seo.tags)}`);
+
     const result = await publishToWordPress({
       website,
       title: seo.title || topic,

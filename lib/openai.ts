@@ -34,7 +34,7 @@ export function buildArticlePrompt(params: {
   const categoryNames = params.availableCategories?.map(c => c.name).join(', ') || 'General';
 
   if (!params.manualInput) {
-    const system = `Tu es un rédacteur web expert SEO.
+    const system = `Tu es un rédacteur web expert SEO pour le site "${websiteTheme}".
 Tu rédiges des articles au ton ${params.tone}.
 TRADUCTION STRICTE OBLIGATOIRE : L'intégralité du contenu, Y COMPRIS LE TITRE (title), le meta desc, les tags et le texte de l'article DOIT impérativement être rédigé en ${params.language}. Si la source est dans une autre langue, traduis toutes les informations.
 Format de sortie OBLIGATOIRE : HTML propre uniquement.
@@ -58,9 +58,17 @@ ${params.customPrompt || ''}`.trim();
 Your task is STRICTLY to take the user's raw text and format it into clean HTML (<h2>, <p>, <ul>, <strong>) without rewriting, summarizing, or changing the words of the original text. You must preserve the original text exactly, only adding HTML tags for structure and readability.
 Do NOT translate the text unless requested.
 You must also generate appropriate SEO metadata based on the text.
+${categoryInstruction}
+
 Format your response as a valid JSON object:
 {
-  "seo": { "title": "...", "metadesc": "...", "focuskw": "...", "tags": ["...", "..."], "category": "..." },
+  "seo": { 
+    "title": "...", 
+    "metadesc": "...", 
+    "focuskw": "...", 
+    "tags": ["...", "..."], 
+    "categoryIds": [...] 
+  },
   "html": "...",
   "suggested_image_prompt": "..."
 }`;
@@ -75,8 +83,8 @@ Include:
 2. Meta-description
 3. Focus Keyword
 4. Content in valid HTML.
-5. 5-10 tags.
-6. A category recommendation from: ${categoryNames}.
+5. 3-5 relevant tags.
+6. Appropriate category IDs from the list provided.
 
 Return ONLY JSON.`;
     return { system, user };
@@ -92,10 +100,17 @@ IMPORTANT:
 - Ensure the tone is ${params.tone}.
 - Adhere to the website theme: ${websiteTheme}.
 - IMPORTANT: DO NOT include labels like "Title:", "Chapô:", or "Conclusion:" inside the "html" content. The "html" should only contain the actual narrative.
+${categoryInstruction}
 
 Format your response as a valid JSON object:
 {
-  "seo": { "title": "...", "metadesc": "...", "focuskw": "...", "tags": ["...", "..."], "category": "..." },
+  "seo": { 
+    "title": "...", 
+    "metadesc": "...", 
+    "focuskw": "...", 
+    "tags": ["...", "..."], 
+    "categoryIds": [...] 
+  },
   "html": "...",
   "suggested_image_prompt": "..."
 }`;
@@ -110,8 +125,8 @@ Include:
 2. Meta-description
 3. Focus Keyword
 4. Content in valid HTML.
-5. 5-10 tags.
-6. A category recommendation from: ${categoryNames}.
+5. 3-5 relevant tags.
+6. Appropriate category IDs from the list provided.
 
 Return ONLY JSON.`;
     return { system, user };
