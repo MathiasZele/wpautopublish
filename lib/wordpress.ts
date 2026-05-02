@@ -28,6 +28,8 @@ export async function publishToWordPress(params: PublishParams) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'User-Agent': 'WPAutoPublish/1.4 (+https://wpautopublish-production.up.railway.app)',
       'X-WP-AutoPublish-Secret': decryptedSecret,
     },
     body: JSON.stringify({
@@ -46,7 +48,9 @@ export async function publishToWordPress(params: PublishParams) {
   });
 
   if (!response.ok) {
-    throw new Error(`WordPress ${response.status}`);
+    const bodySnippet = await response.text().catch(() => '');
+    console.error(`[publishToWordPress] ${response.status} ${response.statusText} | body: ${bodySnippet.slice(0, 300)}`);
+    throw new Error(`WordPress ${response.status}: ${bodySnippet.slice(0, 200)}`);
   }
 
   return response.json() as Promise<{ success: boolean; post_id: number; url: string }>;
