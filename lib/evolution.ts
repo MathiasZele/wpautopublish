@@ -65,13 +65,31 @@ export async function getWhatsAppStatus(instance: string): Promise<InstanceStatu
  * Returns null if the instance is already connected.
  */
 export async function connectWhatsApp(instance: string): Promise<{ qrcode: string | null; pairingCode?: string | null }> {
-  // First, check the status. If it's already open, we might not need a new QR code.
+  // First, check the status. If it's already open, we don't need a new QR code.
   const status = await getWhatsAppStatus(instance);
   
   // If it's already open, we don't return a QR code as it's already connected.
   if (status.state === 'open') {
     return { qrcode: null };
   }
+
+  // If the instance exists but is not open, we delete it to ensure a fresh start with correct settings.
+  if (status.state !== 'unknown') {
+    console.log(`Instance ${instance} exists in state ${status.state}. Deleting for a fresh start.`);
+    try {
+      await fetch(`${EVOLUTION_API_URL}/instance/delete/${instance}`, {
+        method: 'DELETE',
+        headers: { 'apikey': EVOLUTION_API_KEY },
+      });
+    } catch (error) {
+      console.warn('Failed to delete existing instance before recreation:', error);
+    }
+  }
+
+  // Determine App URL for webhook
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL 
+    ? process.env.NEXT_PUBLIC_APP_URL 
+    : (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : '');
 
   // Ensure instance exists or is recreated if stuck
   try {
@@ -82,16 +100,13 @@ export async function connectWhatsApp(instance: string): Promise<{ qrcode: strin
         instanceName: instance,
         integration: 'WHATSAPP-BAILEYS',
         qrcode: true,
-        webhook: process.env.NEXT_PUBLIC_APP_URL
-          ? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/evolution`
-          : undefined,
-        events: ['MESSAGES_UPSERT'],
+        webhook: appUrl ? `${appUrl}/api/webhooks/evolution` : undefined,
+        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
       }),
     });
 
     if (!createRes.ok) {
       const errorData = await createRes.json().catch(() => ({}));
-      // If instance already exists but is not 'open', that's fine, we continue to connect.
       console.log(`Evolution instance create status: ${createRes.status}`, errorData);
     }
   } catch (error) {
