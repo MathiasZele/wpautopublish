@@ -1,4 +1,4 @@
-import { NewsProvider, NewsArticle, NewsSearchOptions } from './base';
+import { NewsProvider, NewsArticle, NewsSearchOptions, safeFetch } from './base';
 
 export class GNewsProvider extends NewsProvider {
   name = 'GNews';
@@ -15,19 +15,17 @@ export class GNewsProvider extends NewsProvider {
       apikey: apiKey,
     });
 
-    // GNews supporte aussi 'from'
     if (opts.maxAgeHours) {
       const fromDate = new Date(Date.now() - opts.maxAgeHours * 60 * 60 * 1000);
       params.set('from', fromDate.toISOString());
     }
 
+    const response = await safeFetch(`https://gnews.io/api/v4/search?${params}`, {
+      cache: 'no-store',
+    });
+    if (!response || !response.ok) return [];
+
     try {
-      const response = await fetch(`https://gnews.io/api/v4/search?${params}`, {
-        cache: 'no-store',
-      });
-
-      if (!response.ok) return [];
-
       const data = await response.json();
       const articles = (data.articles ?? []) as any[];
 
@@ -39,9 +37,10 @@ export class GNewsProvider extends NewsProvider {
         publishedAt: a.publishedAt,
         sourceName: a.source?.name ?? 'GNews',
         providerName: this.name,
+        body: typeof a.content === 'string' ? a.content : undefined,
       }));
     } catch (error) {
-      console.error('GNewsProvider error:', error);
+      console.error('GNewsProvider parse error:', error);
       return [];
     }
   }

@@ -11,7 +11,9 @@ export function calculateCost(inputTokens: number, outputTokens: number): number
   return inputTokens * PRICING.input + outputTokens * PRICING.output;
 }
 
-export function buildArticlePrompt(params: {
+export type PromptMode = 'standard' | 'manual' | 'format-only';
+
+export interface BuildPromptParams {
   topic: string;
   tone: string;
   language: string;
@@ -20,154 +22,187 @@ export function buildArticlePrompt(params: {
   availableCategories?: { id: number; name: string }[];
   websiteTheme?: string;
   manualInput?: string;
-  formatOnly?: boolean;
-}): { system: string; user: string } {
-  const categoryInstruction = params.availableCategories?.length
-    ? `\nChoisis 1 à 3 IDs de catégories parmi cette liste :\n${params.availableCategories.map(c => `- ID: ${c.id}, Nom: ${c.name}`).join('\n')}`
-    : '';
-
-  const themeInstruction = params.websiteTheme
-    ? `\nTHÉMATIQUE STRICTE : L'article (ton, vocabulaire, angle) DOIT impérativement respecter cette thématique : ${params.websiteTheme}. Ne dévie pas du sujet principal du site.`
-    : '';
-
-  const websiteTheme = params.websiteTheme || 'General News';
-  const categoryNames = params.availableCategories?.map(c => c.name).join(', ') || 'General';
-
-  if (!params.manualInput) {
-    const system = `Tu es un rédacteur web expert SEO pour le site "${websiteTheme}".
-Tu rédiges des articles au ton ${params.tone}.
-TRADUCTION STRICTE OBLIGATOIRE : L'intégralité du contenu, Y COMPRIS LE TITRE (title), le meta desc, les tags et le texte de l'article DOIT impérativement être rédigé en ${params.language}. Si la source est dans une autre langue, traduis toutes les informations.
-Format de sortie OBLIGATOIRE : HTML propre uniquement.
-Structure : <h2> pour les parties, <h3> pour les sous-parties, <ul><li> pour les listes.
-Aucun markdown. Uniquement le contenu de l'article, sans balises <html> <body> <head>.
-IMPORTANT : Ne JAMAIS inclure de labels comme "Titre :", "Chapô :", "Introduction :", "Conclusion :" ou "Résumé :" dans le corps HTML de l'article. Passe directement au contenu.
-${themeInstruction}
-${categoryInstruction}
-Génère aussi 3 à 5 tags (étiquettes) pertinents pour l'article en ${params.language}.
-À la fin, retourne un objet JSON sur UNE seule ligne avec ce format exact :
-SEO_META:{"title":"...","metadesc":"...","focuskw":"...","categoryIds":[...],"tags":["..."]}
-${params.customPrompt || ''}`.trim();
-
-    const user = params.newsContext
-      ? `Rédige un article complet sur ce sujet d'actualité :\n\n${params.newsContext}\n\nSujet : ${params.topic}`
-      : `Rédige un article complet et informatif sur : ${params.topic}`;
-
-    return { system, user };
-  } else if (params.formatOnly) {
-    const system = `You are an expert web integrator and SEO specialist for "${websiteTheme}".
-Your task is STRICTLY to take the user's raw text and format it into clean HTML (<h2>, <p>, <ul>, <strong>) without rewriting, summarizing, or changing the words of the original text. You must preserve the original text exactly, only adding HTML tags for structure and readability.
-Do NOT translate the text unless requested.
-You must also generate appropriate SEO metadata based on the text.
-${categoryInstruction}
-
-Format your response as a valid JSON object:
-{
-  "seo": { 
-    "title": "...", 
-    "metadesc": "...", 
-    "focuskw": "...", 
-    "tags": ["...", "..."], 
-    "categoryIds": [...] 
-  },
-  "html": "...",
-  "suggested_image_prompt": "..."
-}`;
-    const user = `Format the following text into valid HTML without changing its content, and generate SEO metadata:
-
----
-${params.manualInput}
----
-
-Include:
-1. SEO Title (optimized)
-2. Meta-description
-3. Focus Keyword
-4. Content in valid HTML.
-5. 3-5 relevant tags.
-6. Appropriate category IDs from the list provided.
-
-Return ONLY JSON.`;
-    return { system, user };
-  } else {
-    const system = `You are an expert journalist and SEO specialist for "${websiteTheme}".
-Your task is to interpret the user's raw input and reformulate it into a professional, high-quality news article.
-
-IMPORTANT:
-- If the user provides a specific title (e.g., "Title: My Article"), use it as the base for the SEO title.
-- If the user provides specific keywords or categories, respect them.
-- Format the article with professional HTML (<h2>, <p>).
-- Always translate the final content into ${params.language}.
-- Ensure the tone is ${params.tone}.
-- Adhere to the website theme: ${websiteTheme}.
-- IMPORTANT: DO NOT include labels like "Title:", "Chapô:", or "Conclusion:" inside the "html" content. The "html" should only contain the actual narrative.
-${categoryInstruction}
-
-Format your response as a valid JSON object:
-{
-  "seo": { 
-    "title": "...", 
-    "metadesc": "...", 
-    "focuskw": "...", 
-    "tags": ["...", "..."], 
-    "categoryIds": [...] 
-  },
-  "html": "...",
-  "suggested_image_prompt": "..."
-}`;
-    const user = `Interpret and reformulate the following input into a complete, professional article:
-
----
-${params.manualInput}
----
-
-Include:
-1. SEO Title (optimized)
-2. Meta-description
-3. Focus Keyword
-4. Content in valid HTML.
-5. 3-5 relevant tags.
-6. Appropriate category IDs from the list provided.
-
-Return ONLY JSON.`;
-    return { system, user };
-  }
+  mode?: PromptMode;
 }
 
-export function parseArticleResponse(raw: string): {
+export interface ParsedArticle {
   html: string;
-  seo: { title: string; metadesc: string; focuskw: string; categoryIds?: number[]; tags?: string[] };
-} {
-  // 1. Try to see if the whole thing is JSON (manual mode)
-  if (raw.trim().startsWith('{') && raw.trim().endsWith('}')) {
-    try {
-      const data = JSON.parse(raw);
-      if (data.seo && data.html) {
-        return {
-          html: data.html,
-          seo: {
-            title: data.seo.title || '',
-            metadesc: data.seo.metadesc || '',
-            focuskw: data.seo.focuskw || '',
-            tags: data.seo.tags || [],
-            categoryIds: data.seo.categoryIds || []
-          }
-        };
-      }
-    } catch {
-      // Not JSON, continue to SEO_META
-    }
+  seo: {
+    title: string;
+    metadesc: string;
+    focuskw: string;
+    tags: string[];
+    categoryIds: number[];
+  };
+  languageCheck?: string;
+}
+
+/**
+ * Construit un prompt unique pour les 3 modes : standard, manual, format-only.
+ * Format de sortie obligatoire : un seul objet JSON (forcé via response_format).
+ * Toujours en français pour les instructions, toujours le même schéma.
+ */
+export function buildArticlePrompt(params: BuildPromptParams): { system: string; user: string; mode: PromptMode } {
+  const mode: PromptMode = params.mode ?? (params.manualInput ? 'manual' : 'standard');
+
+  const websiteTheme = params.websiteTheme || 'site d\'actualité généraliste';
+  const categoriesList = params.availableCategories?.length
+    ? params.availableCategories.map(c => `  - id=${c.id} : ${c.name}`).join('\n')
+    : '';
+
+  // ─── Bloc commun à tous les modes ──────────────────────────────────────────
+  const commonRules = `
+LANGUE CIBLE : ${params.language}
+Toute la sortie (titre, description SEO, tags, contenu HTML) doit être rédigée intégralement en ${params.language}.
+Si la source est dans une autre langue, traduis-la.
+Renvoie obligatoirement le champ "language_check" avec le code de langue dans lequel tu as effectivement écrit (ex: "fr", "en").
+
+FORMAT HTML AUTORISÉ (uniquement) :
+  <p>, <h2>, <h3>, <h4>, <ul>, <ol>, <li>, <strong>, <em>, <a href="...">, <blockquote>, <code>
+Aucun markdown (jamais de #, ##, **, [..](..)) — uniquement HTML.
+Pas de balises <html>, <head>, <body>, <script>, <style>, <iframe>.
+
+INTERDITS DANS LE CORPS DE L'ARTICLE :
+  Les labels "Titre :", "Introduction :", "Chapô :", "Conclusion :", "Résumé :", "Mots-clés :".
+  Les listes en wrapper redondant (du type "Voici les points :"). Aller direct au contenu.
+
+STRUCTURE OBLIGATOIRE :
+  1. Une introduction (1 paragraphe <p>, 60-100 mots) qui pose le contexte sans répéter le titre.
+  2. 3 à 5 sections, chacune avec un <h2>. Sous chaque <h2>, 1 à 3 paragraphes <p> de 80-180 mots, plus optionnellement <h3> ou <ul>.
+  3. Une conclusion (1 paragraphe <p> court, 60-100 mots).
+  Longueur totale cible : 700 à 1200 mots.
+
+CONTRAINTES FACTUELLES (anti-hallucination) :
+  - N'invente jamais de chiffres, dates, citations, noms de personnes ou d'entreprises qui ne sont pas présents dans le contexte source fourni.
+  - Si une information clé est absente, formule en termes généraux ("plusieurs analystes", "récemment") plutôt que d'inventer.
+  - Cite la source originale au moins une fois dans le corps via une formulation naturelle (ex: « selon Le Monde », « rapporte Reuters »).
+  - Ne fabrique pas d'URLs ni de citations textuelles.
+
+TON ÉDITORIAL : ${params.tone}.
+THÉMATIQUE DU SITE : ${websiteTheme}. Reste dans cet univers.
+`.trim();
+
+  const seoBlock = `
+SEO :
+  - title : 50-60 caractères, accrocheur, contient le mot-clé principal
+  - metadesc : 130-155 caractères, résume l'angle, donne envie de cliquer
+  - focuskw : 1 à 3 mots-clés (le sujet central)
+  - tags : 3 à 6 mots-clés courts, en ${params.language}
+${categoriesList ? `  - categoryIds : choisis 1 à 3 IDs parmi cette liste :\n${categoriesList}` : '  - categoryIds : laisser vide []'}
+`.trim();
+
+  const responseFormat = `
+Réponds OBLIGATOIREMENT par un objet JSON unique, sans texte avant/après, avec ce schéma exact :
+{
+  "html": "<p>...</p><h2>...</h2><p>...</p>",
+  "seo": {
+    "title": "...",
+    "metadesc": "...",
+    "focuskw": "...",
+    "tags": ["...", "..."],
+    "categoryIds": [1, 2]
+  },
+  "language_check": "${params.language}"
+}
+`.trim();
+
+  // ─── System par mode ───────────────────────────────────────────────────────
+  let systemHeader: string;
+  let user: string;
+
+  switch (mode) {
+    case 'format-only':
+      systemHeader = `Tu es un intégrateur web SEO pour "${websiteTheme}".
+Ta tâche EST STRICTEMENT de prendre le texte brut fourni et de le mettre en forme en HTML propre, sans réécrire, résumer ou modifier les mots originaux.
+Tu peux uniquement ajouter de la structure HTML (titres <h2>, paragraphes <p>, listes, gras) pour la lisibilité.
+Tu ne traduis PAS sauf si la langue cible diffère.
+Tu génères les métadonnées SEO sur la base du texte fourni.`;
+      user = `Texte brut à mettre en forme (sans le réécrire) :
+
+---
+${params.manualInput}
+---
+
+Génère la sortie JSON.`;
+      break;
+
+    case 'manual':
+      systemHeader = `Tu es un journaliste rédacteur expert SEO pour "${websiteTheme}".
+Tu reçois un brief utilisateur (sujet, axe, ou note) et tu rédiges un article professionnel et original autour.
+Tu reformules entièrement, tu n'es pas tenu de garder les mots du brief tels quels.`;
+      user = `Brief utilisateur :
+
+---
+${params.manualInput}
+---
+
+Sujet/angle : ${params.topic}
+${params.newsContext ? `\nContexte source (à utiliser comme matière, pas à recopier) :\n${params.newsContext}` : ''}
+
+Rédige l'article complet et renvoie la sortie JSON.`;
+      break;
+
+    case 'standard':
+    default:
+      systemHeader = `Tu es un journaliste rédacteur expert SEO pour "${websiteTheme}".
+Tu rédiges un article complet à partir d'un sujet d'actualité réel.
+Tu utilises le contexte source comme matière première mais tu rédiges à ta propre voix — ne recopie pas les phrases de la source.`;
+      user = `Sujet d'actualité : ${params.topic}
+${params.newsContext ? `\nContexte source (matière, pas à plagier) :\n${params.newsContext}` : ''}
+
+Rédige l'article complet et renvoie la sortie JSON.`;
+      break;
   }
 
-  // 2. Standard mode with SEO_META marker
-  const seoMatch = raw.match(/SEO_META:(\{.*?\})/);
-  let seo: any = { title: '', metadesc: '', focuskw: '', categoryIds: [], tags: [] };
-  if (seoMatch) {
-    try {
-      seo = JSON.parse(seoMatch[1]);
-    } catch {
-      // ignore parse errors
-    }
+  const customSuffix = params.customPrompt ? `\n\nCONSIGNES SUPPLÉMENTAIRES DU SITE :\n${params.customPrompt}` : '';
+
+  const system = `${systemHeader}
+
+${commonRules}
+
+${seoBlock}
+
+${responseFormat}${customSuffix}`.trim();
+
+  return { system, user, mode };
+}
+
+/**
+ * Parse strict de la réponse OpenAI.
+ * Suppose response_format: { type: 'json_object' } côté appelant.
+ * Throw explicite si le JSON est invalide ou si les champs requis manquent.
+ */
+export function parseArticleResponse(raw: string): ParsedArticle {
+  const trimmed = raw.trim();
+
+  let data: any;
+  try {
+    data = JSON.parse(trimmed);
+  } catch (e) {
+    throw new Error(`Réponse IA non-JSON : ${(e as Error).message}. Début : ${trimmed.slice(0, 120)}`);
   }
-  const html = raw.replace(/SEO_META:\{.*?\}/, '').trim();
-  return { html, seo };
+
+  if (!data || typeof data !== 'object') {
+    throw new Error('Réponse IA : objet JSON attendu');
+  }
+
+  const html = typeof data.html === 'string' ? data.html : '';
+  if (!html || html.length < 200) {
+    throw new Error(`HTML manquant ou trop court (${html.length} chars)`);
+  }
+
+  const seoIn = data.seo && typeof data.seo === 'object' ? data.seo : {};
+  const seo = {
+    title: typeof seoIn.title === 'string' ? seoIn.title.trim() : '',
+    metadesc: typeof seoIn.metadesc === 'string' ? seoIn.metadesc.trim() : '',
+    focuskw: typeof seoIn.focuskw === 'string' ? seoIn.focuskw.trim() : '',
+    tags: Array.isArray(seoIn.tags) ? seoIn.tags.filter((t: any) => typeof t === 'string').slice(0, 10) : [],
+    categoryIds: Array.isArray(seoIn.categoryIds) ? seoIn.categoryIds.filter((n: any) => Number.isInteger(n)) : [],
+  };
+
+  if (!seo.title) throw new Error('SEO title manquant');
+
+  const languageCheck = typeof data.language_check === 'string' ? data.language_check.trim().toLowerCase() : undefined;
+
+  return { html, seo, languageCheck };
 }

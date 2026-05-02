@@ -34,18 +34,32 @@ class NoImageFoundError extends Error {
   }
 }
 
+const STOPWORDS_LOOSER = /^(les?|la|des?|de|du|une?|et|ou|sur|pour|avec|dans|chez|aux?|en)$/i;
+
+/**
+ * Simplifie une requête pour le 3ème niveau de fallback NewsAPI.
+ * - Garde les mots ≥ 2 chars hors stopwords courants
+ * - Si la query simplifiée est vide, garde les 2 mots les plus longs sans filtre stopwords
+ * - Si la query originale fait moins de 3 mots, ne simplifie pas
+ */
 function looserQuery(query: string): string {
-  // Garde les 2 premiers mots significatifs (>3 chars) du query original
-  const words = query
-    .split(/\s+/)
-    .filter((w) => w.length > 3 && !/^(les?|la|des?|de|du|une?|et|ou|sur|pour|avec)$/i.test(w));
-  return words.slice(0, 2).join(' ') || query;
+  const allWords = query.split(/\s+/).filter(Boolean);
+  if (allWords.length < 3) return query;
+
+  const filtered = allWords.filter(w => w.length >= 2 && !STOPWORDS_LOOSER.test(w));
+  if (filtered.length >= 2) return filtered.slice(0, 3).join(' ');
+
+  // Fallback : 2 plus longs mots de la query originale sans filtre
+  const sortedByLen = [...allWords].sort((a, b) => b.length - a.length);
+  return sortedByLen.slice(0, 2).join(' ') || query;
 }
 
 function pickArticleWithImage(articles: NewsArticle[], index: number, existingUrls?: Set<string>): NewsArticle | null {
-  const valid = articles.filter(
-    (a) => a.title && a.title !== '[Removed]' && a.urlToImage && (!existingUrls || !existingUrls.has(a.url))
-  );
+  // Les filtres durs (urlToImage, [Removed], description, dates) sont déjà appliqués par l'orchestrator.
+  // Ici on filtre uniquement les doublons déjà publiés sur ce site.
+  const valid = existingUrls
+    ? articles.filter(a => !existingUrls.has(a.url))
+    : articles;
   if (valid.length === 0) return null;
   return valid[index % valid.length];
 }
@@ -95,11 +109,27 @@ async function findArticleWithImage(opts: {
 }
 
 function mapSource(a: NewsArticle, keepNewsContext: boolean, overrideTopic?: string): ResolvedSource {
+  // Contexte source enrichi : titre + description + body (si dispo) + URL + date
+  // L'IA s'en sert comme matière pour grounder l'article (anti-hallucination).
+  let newsContext: string | undefined;
+  if (keepNewsContext) {
+    const parts: string[] = [];
+    parts.push(`Titre : ${a.title}`);
+    if (a.description) parts.push(`Description : ${a.description}`);
+    if (a.body && a.body.length > a.description.length) {
+      // On tronque à 1500 chars pour éviter de faire exploser le prompt
+      const body = a.body.slice(0, 1500);
+      parts.push(`Contenu (extrait) : ${body}`);
+    }
+    parts.push(`URL source : ${a.url}`);
+    parts.push(`Source : ${a.sourceName}`);
+    if (a.publishedAt) parts.push(`Date : ${a.publishedAt}`);
+    newsContext = parts.join('\n');
+  }
+
   return {
     topic: overrideTopic ?? a.title,
-    newsContext: keepNewsContext
-      ? `Titre : ${a.title}\nDescription : ${a.description ?? ''}`
-      : undefined,
+    newsContext,
     sourceUrl: a.url,
     sourceName: a.sourceName,
     providerName: a.providerName,
@@ -251,6 +281,7 @@ export const articleWorker = new Worker<ArticleJobData>(
     }
 
     const websiteTheme = profile.topics.join(', ') || website.name;
+    const promptMode = job.data.formatOnly ? 'format-only' : (manualInput ? 'manual' : 'standard');
     const { system, user } = buildArticlePrompt({
       topic,
       tone: profile.tone,
@@ -260,7 +291,7 @@ export const articleWorker = new Worker<ArticleJobData>(
       availableCategories,
       websiteTheme,
       manualInput,
-      formatOnly: job.data.formatOnly,
+      mode: promptMode,
     });
 
     const completion = await openai.chat.completions.create({
@@ -269,11 +300,21 @@ export const articleWorker = new Worker<ArticleJobData>(
         { role: 'system', content: system },
         { role: 'user', content: user },
       ],
-      max_tokens: 2000,
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+      top_p: 0.9,
+      max_tokens: 2500,
     });
 
     const raw = completion.choices[0].message.content ?? '';
-    const { html: rawHtml, seo } = parseArticleResponse(raw);
+    const parsed = parseArticleResponse(raw); // throw si malformé
+    const { html: rawHtml, seo, languageCheck } = parsed;
+
+    // Filet de sécurité langue : si l'IA déclare avoir écrit dans une autre langue, on échoue net
+    if (languageCheck && languageCheck !== profile.language.toLowerCase()) {
+      throw new Error(`Langue incorrecte : attendu "${profile.language}", IA a renvoyé "${languageCheck}"`);
+    }
+
     const html = sanitizeArticleHtml(rawHtml);
     const inputTokens = completion.usage?.prompt_tokens ?? 0;
     const outputTokens = completion.usage?.completion_tokens ?? 0;

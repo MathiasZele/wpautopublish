@@ -1,4 +1,4 @@
-import { NewsProvider, NewsArticle, NewsSearchOptions } from './base';
+import { NewsProvider, NewsArticle, NewsSearchOptions, safeFetch } from './base';
 
 export class NewsApiProvider extends NewsProvider {
   name = 'NewsAPI';
@@ -20,14 +20,13 @@ export class NewsApiProvider extends NewsProvider {
       params.set('from', fromDate.toISOString());
     }
 
+    const response = await safeFetch(`https://newsapi.org/v2/everything?${params}`, {
+      headers: { 'X-Api-Key': apiKey },
+      cache: 'no-store',
+    });
+    if (!response || !response.ok) return [];
+
     try {
-      const response = await fetch(`https://newsapi.org/v2/everything?${params}`, {
-        headers: { 'X-Api-Key': apiKey },
-        cache: 'no-store',
-      });
-
-      if (!response.ok) return [];
-
       const data = await response.json();
       const articles = (data.articles ?? []) as any[];
 
@@ -39,9 +38,10 @@ export class NewsApiProvider extends NewsProvider {
         publishedAt: a.publishedAt,
         sourceName: a.source?.name ?? 'NewsAPI',
         providerName: this.name,
+        body: typeof a.content === 'string' ? a.content : undefined,
       }));
     } catch (error) {
-      console.error('NewsApiProvider error:', error);
+      console.error('NewsApiProvider parse error:', error);
       return [];
     }
   }

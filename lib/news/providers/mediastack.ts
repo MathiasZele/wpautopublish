@@ -1,4 +1,4 @@
-import { NewsProvider, NewsArticle, NewsSearchOptions } from './base';
+import { NewsProvider, NewsArticle, NewsSearchOptions, safeFetch } from './base';
 
 export class MediastackProvider extends NewsProvider {
   name = 'Mediastack';
@@ -9,7 +9,7 @@ export class MediastackProvider extends NewsProvider {
 
     const pageSize = opts.pageSize ?? 10;
     const offset = ((opts.page ?? 1) - 1) * pageSize;
-    
+
     const params = new URLSearchParams({
       access_key: apiKey,
       keywords: opts.query,
@@ -19,15 +19,20 @@ export class MediastackProvider extends NewsProvider {
       sort: 'published_desc',
     });
 
-    try {
-      // Note: Mediastack Free doesn't support HTTPS. Checking if user has a paid plan or use HTTP.
-      // Usually developers start with HTTP for free plan.
-      const response = await fetch(`http://api.mediastack.com/v1/news?${params}`, {
+    // Mediastack : on tente HTTPS d'abord (compte payant). Si échec → fallback HTTP avec warning.
+    let response = await safeFetch(`https://api.mediastack.com/v1/news?${params}`, {
+      cache: 'no-store',
+    });
+    if (!response || !response.ok) {
+      const status = response?.status ?? 'no-response';
+      console.warn(`[mediastack] HTTPS échoué (${status}), fallback HTTP — risque sécurité, considérer un upgrade payant`);
+      response = await safeFetch(`http://api.mediastack.com/v1/news?${params}`, {
         cache: 'no-store',
       });
+      if (!response || !response.ok) return [];
+    }
 
-      if (!response.ok) return [];
-
+    try {
       const data = await response.json();
       const articles = (data.data ?? []) as any[];
 
@@ -41,7 +46,7 @@ export class MediastackProvider extends NewsProvider {
         providerName: this.name,
       }));
     } catch (error) {
-      console.error('MediastackProvider error:', error);
+      console.error('MediastackProvider parse error:', error);
       return [];
     }
   }
