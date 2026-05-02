@@ -303,7 +303,7 @@ export const articleWorker = new Worker<ArticleJobData>(
       response_format: { type: 'json_object' },
       temperature: 0.7,
       top_p: 0.9,
-      max_tokens: 2500,
+      max_tokens: 4000,
     });
 
     const raw = completion.choices[0].message.content ?? '';

@@ -67,15 +67,21 @@ INTERDITS DANS LE CORPS DE L'ARTICLE :
   Les listes en wrapper redondant (du type "Voici les points :"). Aller direct au contenu.
 
 STRUCTURE OBLIGATOIRE :
-  1. Une introduction (1 paragraphe <p>, 60-100 mots) qui pose le contexte sans répéter le titre.
-  2. 3 à 5 sections, chacune avec un <h2>. Sous chaque <h2>, 1 à 3 paragraphes <p> de 80-180 mots, plus optionnellement <h3> ou <ul>.
-  3. Une conclusion (1 paragraphe <p> court, 60-100 mots).
-  Longueur totale cible : 700 à 1200 mots.
+  1. Une introduction (1 paragraphe <p>, 80-120 mots) qui pose le contexte sans répéter le titre.
+  2. 4 à 6 sections, chacune avec un <h2>. Sous chaque <h2>, 2 à 3 paragraphes <p> de 100-180 mots, plus optionnellement <h3> ou <ul>.
+  3. Une conclusion (1 paragraphe <p>, 80-120 mots).
+
+LONGUEUR CIBLE STRICTE : 800 à 1100 mots de contenu réel (texte hors balises).
+  - C'est un MINIMUM, pas un maximum souple.
+  - Un article < 700 mots est REJETÉ par notre éditeur — développe chaque section avec des explications, du contexte, des nuances.
+  - Ne sacrifie pas la profondeur. Si une section est courte, étoffe-la avec : conséquences, parties prenantes, contexte historique, perspectives.
 
 CONTRAINTES FACTUELLES (anti-hallucination) :
   - N'invente jamais de chiffres, dates, citations, noms de personnes ou d'entreprises qui ne sont pas présents dans le contexte source fourni.
   - Si une information clé est absente, formule en termes généraux ("plusieurs analystes", "récemment") plutôt que d'inventer.
-  - Cite la source originale au moins une fois dans le corps via une formulation naturelle (ex: « selon Le Monde », « rapporte Reuters »).
+  - OBLIGATOIRE : tu DOIS mentionner explicitement le nom de la source originale (champ "Source :" du contexte fourni) au moins UNE fois dans le corps, via une formulation naturelle.
+    Exemples acceptés : « selon Jeune Afrique », « rapporte Reuters », « comme l'indique Le Monde », « d'après les informations de la BBC ».
+    Cette mention NE DOIT PAS être en conclusion uniquement — idéalement dans un paragraphe central.
   - Ne fabrique pas d'URLs ni de citations textuelles.
 
 TON ÉDITORIAL : ${params.tone}.
