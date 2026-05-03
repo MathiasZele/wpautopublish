@@ -1,6 +1,7 @@
 import { Website } from '@prisma/client';
 import { decrypt } from './encryption';
 import { assertPublicUrl, safeFetch } from './safeUrl';
+import { getOrSet } from './cache';
 
 interface PublishParams {
   website: { url: string; customEndpointKey: string };
@@ -174,38 +175,44 @@ function stripHtml(s: string): string {
     .trim();
 }
 
+export const WP_CATEGORIES_CACHE_TTL_SECONDS = 300; // 5 min
+
 export async function fetchWordPressCategories(
   siteUrl: string,
   username: string,
   appPassword: string,
 ): Promise<WPCategory[]> {
   const baseUrl = siteUrl.replace(/\/$/, '');
-  const auth = `Basic ${Buffer.from(`${username}:${appPassword}`).toString('base64')}`;
-  const all: WPCategory[] = [];
-  let page = 1;
+  // Clé de cache basée sur (siteUrl, username) — pas sur le password (secret).
+  // Si un site change d'URL ou d'utilisateur, la clé change et le cache expire seul.
+  const cacheKey = `wp-cats:${baseUrl}:${username}`;
 
-  while (true) {
-    const url = `${baseUrl}/wp-json/wp/v2/categories?per_page=100&page=${page}`;
-    await assertPublicUrl(url);
-    const res = await fetch(url, {
-      headers: { Authorization: auth },
-      cache: 'no-store',
-      redirect: 'manual',
-    });
-    if (!res.ok) {
-      // Page suivante vide (WordPress renvoie 400 quand il n'y a plus de pages)
-      if (res.status === 400 && page > 1) break;
-      // L'API REST est bloquée ou les droits sont insuffisants : on retourne ce qu'on a
-      console.warn(`fetchWordPressCategories: ${res.status} on ${url} — returning partial results`);
-      break;
+  return getOrSet(cacheKey, WP_CATEGORIES_CACHE_TTL_SECONDS, async () => {
+    const auth = `Basic ${Buffer.from(`${username}:${appPassword}`).toString('base64')}`;
+    const all: WPCategory[] = [];
+    let page = 1;
+
+    while (true) {
+      const url = `${baseUrl}/wp-json/wp/v2/categories?per_page=100&page=${page}`;
+      await assertPublicUrl(url);
+      const res = await fetch(url, {
+        headers: { Authorization: auth },
+        cache: 'no-store',
+        redirect: 'manual',
+      });
+      if (!res.ok) {
+        if (res.status === 400 && page > 1) break;
+        console.warn(`fetchWordPressCategories: ${res.status} on ${url} — returning partial results`);
+        break;
+      }
+      const list = (await res.json()) as WPCategory[];
+      all.push(...list.map((c) => ({ id: c.id, name: c.name, slug: c.slug, count: c.count })));
+      if (list.length < 100) break;
+      page++;
     }
-    const list = (await res.json()) as WPCategory[];
-    all.push(...list.map((c) => ({ id: c.id, name: c.name, slug: c.slug, count: c.count })));
-    if (list.length < 100) break;
-    page++;
-  }
 
-  return all.sort((a, b) => a.name.localeCompare(b.name));
+    return all.sort((a, b) => a.name.localeCompare(b.name));
+  });
 }
 
 export async function changeWordPressPostStatus(

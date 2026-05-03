@@ -86,6 +86,7 @@ model Website {
   profile  Profile?
   articles ArticleLog[]
   whatsAppRequests WhatsAppRequest[]
+  whatsAppSessions WhatsAppSession[]
 }
 
 enum WebsiteStatus {
@@ -172,13 +173,16 @@ model WhatsAppRequest {
 model WhatsAppAllowedNumber {
   id          String   @id @default(cuid())
   userId      String
-  phoneNumber String              // ex: "33612345678" (no @s.whatsapp.net)
-  label       String?              // optional friendly name
+  // Globalement unique : un numéro de téléphone n'appartient qu'à un seul user.
+  // Évite que findFirst dans le webhook Evolution route arbitrairement vers un user
+  // si deux users allowlistent par erreur le même numéro.
+  phoneNumber String   @unique
+  label       String?
   createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, phoneNumber])
+  @@index([userId])
 }
 
 
@@ -201,4 +205,6 @@ model WhatsAppSession {
   data       Json?    // Stores temporary text, title, etc.
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
 }

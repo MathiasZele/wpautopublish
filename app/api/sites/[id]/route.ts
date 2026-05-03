@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { encrypt } from '@/lib/encryption';
 import { assertPublicUrl, UnsafeUrlError } from '@/lib/safeUrl';
+import { invalidate } from '@/lib/cache';
 
 const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -100,6 +101,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     },
     include: { profile: true },
   });
+
+  // Invalide le cache des catégories WP si l'URL ou les credentials ont changé
+  if (url || wpAppPassword) {
+    const baseUrl = (url ?? existing.url).replace(/\/$/, '');
+    invalidate(`wp-cats:${baseUrl}:${existing.wpUsername}`).catch(() => {});
+  }
 
   return NextResponse.json({
     id: updated.id,

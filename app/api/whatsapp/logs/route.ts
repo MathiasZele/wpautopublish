@@ -8,6 +8,7 @@ export async function GET() {
 
   try {
     const logs = await prisma.whatsAppRequest.findMany({
+      where: { website: { userId: session.user.id } },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
