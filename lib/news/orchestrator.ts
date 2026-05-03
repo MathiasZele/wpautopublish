@@ -136,3 +136,13 @@ function rankByQuality(articles: NewsArticle[]): NewsArticle[] {
 }
 
 export const newsOrchestrator = new NewsOrchestrator();
+
+// Exports pour les tests unitaires (ne pas utiliser en application)
+export const __test__ = {
+  isUsable,
+  tokenize,
+  jaccard,
+  deduplicate,
+  qualityScore,
+  rankByQuality,
+};

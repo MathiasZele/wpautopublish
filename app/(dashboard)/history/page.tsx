@@ -1,4 +1,4 @@
-import { ExternalLink, Newspaper, Image as ImageIcon, Search, DollarSign, Cpu, CheckCircle2, XCircle, Tag, Folder } from 'lucide-react';
+import { ExternalLink, Newspaper, Image as ImageIcon, Search, DollarSign, Cpu, CheckCircle2, XCircle, Tag, Folder, AlertTriangle } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -207,6 +207,20 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
                     {log.errorMessage && (
                       <div className="text-[11px] text-red-500 mt-1 font-medium bg-red-50 px-2 py-0.5 rounded border border-red-100 inline-block max-w-full truncate">
                         {log.errorMessage}
+                      </div>
+                    )}
+                    {(log.warnings || []).length > 0 && (
+                      <div className="mt-1 space-y-0.5">
+                        {log.warnings.map((w, i) => (
+                          <div
+                            key={i}
+                            className="text-[10px] text-amber-700 font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-100 inline-flex items-center gap-1 max-w-full"
+                            title={w}
+                          >
+                            <AlertTriangle size={10} className="flex-shrink-0" />
+                            <span className="truncate">{w}</span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </td>

@@ -142,6 +142,9 @@ model ArticleLog {
   imageUrl      String?
   categoryIds   Int[]         @default([])
   tags          String[]      @default([])
+  // Avertissements non bloquants émis pendant le traitement (catégories tronquées,
+  // section parasite retirée, source ajoutée par le worker, etc.). Visibles côté UI.
+  warnings      String[]      @default([])
   publishedAt   DateTime?
   createdAt     DateTime      @default(now())
 

@@ -327,6 +327,9 @@ export const articleWorker = new Worker<ArticleJobData>(
     const parsed = parseArticleResponse(raw); // throw si malformé
     let { html: rawHtml, seo, languageCheck } = parsed;
 
+    // Avertissements non bloquants accumulés pendant le traitement (visibles côté UI)
+    const warnings: string[] = [];
+
     // Filet de sécurité langue : si l'IA déclare avoir écrit dans une autre langue, on échoue net
     if (languageCheck && languageCheck !== profile.language.toLowerCase()) {
       throw new Error(`Langue incorrecte : attendu "${profile.language}", IA a renvoyé "${languageCheck}"`);
@@ -334,12 +337,18 @@ export const articleWorker = new Worker<ArticleJobData>(
 
     // Garde-fou : l'IA renvoie parfois 10+ catégories alors qu'on en veut 1-3 max
     if (seo.categoryIds && seo.categoryIds.length > 3) {
-      log.warn({ count: seo.categoryIds.length }, 'IA returned too many categories, truncating to 3');
+      const original = seo.categoryIds.length;
+      log.warn({ count: original }, 'IA returned too many categories, truncating to 3');
+      warnings.push(`Catégories tronquées : l'IA en a proposé ${original}, conservées les 3 premières`);
       seo.categoryIds = seo.categoryIds.slice(0, 3);
     }
 
     // Garde-fou : retire un éventuel <h2>Conclusion</h2> ajouté en violation de la consigne
+    const beforeConclusion = rawHtml;
     rawHtml = rawHtml.replace(/<h2[^>]*>\s*conclusion\s*<\/h2>/gi, '');
+    if (rawHtml !== beforeConclusion) {
+      warnings.push("Section <h2>Conclusion</h2> retirée (violation consigne)");
+    }
 
     // Garde-fou : si la source n'est pas mentionnée dans le corps malgré la directive,
     // on l'injecte en fin d'article pour respecter la traçabilité éditoriale.
@@ -364,10 +373,12 @@ export const articleWorker = new Worker<ArticleJobData>(
             s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
              .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
           log.warn({ sourceName: resolvedSource.sourceName }, 'Source non mentionnée par l\'IA, injection auto en fin d\'article');
+          warnings.push(`Source "${resolvedSource.sourceName}" injectée automatiquement (non mentionnée par l'IA)`);
           const sourceLine = `<p><em>Source : <a href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(resolvedSource.sourceName)}</a></em></p>`;
           rawHtml = rawHtml.trim() + '\n' + sourceLine;
         } else {
           log.warn({ sourceUrl: resolvedSource.sourceUrl.slice(0, 80) }, 'Source URL refusée (protocole non http/https)');
+          warnings.push("Source URL refusée (protocole non http/https)");
         }
       }
     }
@@ -384,6 +395,7 @@ export const articleWorker = new Worker<ArticleJobData>(
         cloudinaryUrl = await uploadImageFromUrl(candidateImage);
       } catch (e) {
         log.error({ err: e, candidateImage }, 'Cloudinary upload failed');
+        warnings.push("Upload Cloudinary échoué — article publié sans image");
         // On ne bloque plus la publication si l'image échoue, sauf si c'est critique
         // (On peut aussi imaginer un fallback vers une image par défaut ici)
       }
@@ -434,6 +446,7 @@ export const articleWorker = new Worker<ArticleJobData>(
           imageUrl: cloudinaryUrl,
           categoryIds: finalCategoryIds,
           tags: seo.tags || [],
+          warnings,
           publishedAt: new Date(),
         },
       });

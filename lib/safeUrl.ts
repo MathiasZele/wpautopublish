@@ -54,7 +54,8 @@ export async function assertPublicUrl(rawUrl: string): Promise<URL> {
     throw new UnsafeUrlError(`protocole ${url.protocol} non autorisé`);
   }
 
-  const host = url.hostname.toLowerCase();
+  // Node URL conserve les brackets autour des IPv6 (ex: "[::1]") — on les retire
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
   if (PRIVATE_HOSTNAMES.has(host)) {
     throw new UnsafeUrlError(`hôte ${host} bloqué`);
   }
@@ -65,7 +66,7 @@ export async function assertPublicUrl(rawUrl: string): Promise<URL> {
     return url;
   }
 
-  // IPv6 littérale (URL retire les brackets pour url.hostname)
+  // IPv6 littérale
   if (host.includes(':')) {
     if (isPrivateIpv6(host)) throw new UnsafeUrlError(`IPv6 privée ${host}`);
     return url;
