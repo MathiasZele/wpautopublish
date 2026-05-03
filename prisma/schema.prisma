@@ -122,6 +122,10 @@ model Profile {
 
 model ArticleLog {
   id            String        @id @default(cuid())
+  // Idempotence : ID du job BullMQ ayant créé ce log. Si un retry est tenté
+  // après que le post WP a déjà été créé, on détecte le doublon via cet index
+  // unique et on ne refait pas la publication.
+  jobId         String?       @unique
   websiteId     String
   title         String
   wpPostId      Int?

@@ -7,11 +7,14 @@ import { changeWordPressPostStatus, getWordPressPostInfo, fetchWordPressCategori
 import { uploadImageFromBuffer } from '@/lib/cloudinary';
 import { decrypt } from '@/lib/encryption';
 import { consume, webhookLimit } from '@/lib/rateLimit';
+import { logger } from '@/lib/logger';
+
+const log = logger.child({ module: 'webhook:evolution' });
 
 function checkWebhookAuth(authHeader: string | null): boolean {
   const secret = process.env.EVOLUTION_WEBHOOK_SECRET;
   if (!secret) {
-    console.error('[webhook] EVOLUTION_WEBHOOK_SECRET not configured — refusing all requests');
+    log.error('EVOLUTION_WEBHOOK_SECRET not configured — refusing all requests');
     return false;
   }
   const provided = (authHeader ?? '').replace(/^Bearer\s+/i, '');
@@ -25,7 +28,7 @@ export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('apikey') || req.headers.get('authorization');
     if (!checkWebhookAuth(authHeader)) {
-      console.warn('[webhook] unauthorized');
+      log.warn('unauthorized webhook attempt');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -38,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     const instanceName = body.instance;
-    console.log('Webhook received:', body.event, instanceName);
+    log.debug({ event: body.event, instanceName }, 'Webhook received');
 
     const message = body.data;
     const remoteJid = message.key.remoteJid;
@@ -67,11 +70,11 @@ export async function POST(req: NextRequest) {
 
     // Logs sans PII : on tronque le numéro et on log juste la longueur du message.
     const senderHash = typeof remoteJid === 'string' ? remoteJid.slice(-6) : '?';
-    console.log(`[wa] msg from ...${senderHash} | image=${isImage} | textLen=${text.length}`);
+    log.info({ senderHash, isImage, textLen: text.length }, 'wa message received');
 
     // Si pas de texte ET pas d'image, on ignore (permet de laisser passer les images sans texte)
     if (!text && !isImage) {
-      console.log('Ignoring message: no text and no image detected');
+      log.debug('Ignoring message: no text and no image detected');
       return NextResponse.json({ status: 'no_content' });
     }
 
@@ -146,13 +149,13 @@ export async function POST(req: NextRequest) {
 
         let imageUrl: string | undefined = undefined;
 
-        console.log(`Step WAITING_FOR_IMAGE. isImage: ${isImage}, text: ${text}`);
+        log.debug({ step: 'WAITING_FOR_IMAGE', isImage, textLen: text.length }, 'Session step');
 
         if (isImage) {
           await sendWhatsAppMessage(instanceName, remoteJid, "⏳ Traitement de l'image...");
           const base64 = await getMediaBase64(instanceName, message.key);
           if (!base64) {
-            console.error('[wa] base64 fetch failed');
+            log.error('base64 fetch failed');
             await sendWhatsAppMessage(instanceName, remoteJid, "⚠️ Impossible de récupérer l'image. Veuillez réessayer ou envoyer un lien.");
             return NextResponse.json({ status: 'image_fetch_failed' });
           }
@@ -162,7 +165,7 @@ export async function POST(req: NextRequest) {
           const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
           const estimatedBytes = Math.floor(base64.length * 0.75);
           if (estimatedBytes > MAX_IMAGE_BYTES) {
-            console.warn(`[wa] image trop grande : ${estimatedBytes} bytes > ${MAX_IMAGE_BYTES}`);
+            log.warn({ estimatedBytes, max: MAX_IMAGE_BYTES }, 'image too large, rejected');
             await sendWhatsAppMessage(instanceName, remoteJid, "⚠️ Image trop volumineuse (max 10 MB). Veuillez en envoyer une plus petite.");
             return NextResponse.json({ status: 'image_too_large' });
           }
@@ -201,7 +204,7 @@ export async function POST(req: NextRequest) {
 
     // ─── FILTRE COMMANDES (Doit commencer par /) ─────────────────────────────
     if (!text.startsWith('/')) {
-      console.log('Ignoring non-command message');
+      log.debug('Ignoring non-command message');
       return NextResponse.json({ status: 'not_a_command' });
     }
 
@@ -518,7 +521,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ status: 'unknown_command' });
   } catch (error) {
-    console.error('Webhook error:', error);
+    log.error({ err: error }, 'Webhook error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

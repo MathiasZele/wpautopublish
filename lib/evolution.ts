@@ -1,5 +1,8 @@
+import { logger } from './logger';
+
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL!;
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY!;
+const log = logger.child({ module: 'evolution' });
 
 const evolutionHeaders = {
   'Content-Type': 'application/json',
@@ -17,12 +20,12 @@ export async function sendWhatsAppMessage(instance: string, jid: string, text: s
       body: JSON.stringify({ number: jid, text }),
     });
     if (!res.ok) {
-      console.error('Evolution API Error:', await res.text());
+      log.error({ status: res.status, body: await res.text() }, 'sendWhatsAppMessage failed');
       return false;
     }
     return true;
-  } catch (error) {
-    console.error('Failed to send WhatsApp message:', error);
+  } catch (err) {
+    log.error({ err }, 'sendWhatsAppMessage network error');
     return false;
   }
 }
@@ -75,14 +78,14 @@ export async function connectWhatsApp(instance: string): Promise<{ qrcode: strin
 
   // If the instance exists but is not open, we delete it to ensure a fresh start with correct settings.
   if (status.state !== 'unknown') {
-    console.log(`Instance ${instance} exists in state ${status.state}. Deleting for a fresh start.`);
+    log.info({ instance, state: status.state }, 'Recreating instance for fresh start');
     try {
       await fetch(`${EVOLUTION_API_URL}/instance/delete/${instance}`, {
         method: 'DELETE',
         headers: { 'apikey': EVOLUTION_API_KEY },
       });
-    } catch (error) {
-      console.warn('Failed to delete existing instance before recreation:', error);
+    } catch (err) {
+      log.warn({ err }, 'Failed to delete existing instance before recreation');
     }
   }
 
@@ -111,10 +114,10 @@ export async function connectWhatsApp(instance: string): Promise<{ qrcode: strin
 
     if (!createRes.ok) {
       const errorData = await createRes.json().catch(() => ({}));
-      console.log(`Evolution instance create status: ${createRes.status}`, errorData);
+      log.warn({ status: createRes.status, errorData }, 'Evolution instance create non-OK');
     }
-  } catch (error) {
-    console.error('Error creating Evolution instance:', error);
+  } catch (err) {
+    log.error({ err }, 'Error creating Evolution instance');
   }
 
   // Fetch QR code
@@ -124,7 +127,7 @@ export async function connectWhatsApp(instance: string): Promise<{ qrcode: strin
   });
 
   if (!res.ok) {
-    console.error(`Evolution connect failed (${res.status}):`, await res.text().catch(() => 'No body'));
+    log.error({ status: res.status, body: await res.text().catch(() => 'No body') }, 'Evolution connect failed');
     return { qrcode: null };
   }
 
@@ -147,34 +150,33 @@ export async function connectWhatsApp(instance: string): Promise<{ qrcode: strin
  */
 export async function logoutWhatsApp(instance: string): Promise<boolean> {
   try {
-    console.log(`Attempting logout for instance: ${instance}`);
+    log.info({ instance }, 'Attempting logout');
     const res = await fetch(`${EVOLUTION_API_URL}/instance/logout/${instance}`, {
       method: 'DELETE',
       headers: evolutionHeaders,
     });
-    
+
     if (!res.ok) {
       const errorText = await res.text().catch(() => 'No error text');
-      console.error(`Evolution logout failed (${res.status}):`, errorText);
-      
+      log.warn({ status: res.status, errorText, instance }, 'Evolution logout failed, trying force-delete');
+
       // If logout fails (e.g., 500 Connection Closed), we try to force delete the instance
       // to ensure the user can reconnect from scratch.
-      console.log(`Attempting force delete for instance: ${instance}`);
       const deleteRes = await fetch(`${EVOLUTION_API_URL}/instance/delete/${instance}`, {
         method: 'DELETE',
         headers: { 'apikey': EVOLUTION_API_KEY },
       });
-      
+
       if (!deleteRes.ok) {
-        console.error(`Evolution delete failed (${deleteRes.status}):`, await deleteRes.text().catch(() => 'No body'));
+        log.error({ status: deleteRes.status, body: await deleteRes.text().catch(() => 'No body') }, 'Evolution delete failed');
         return false;
       }
       return true;
     }
-    
+
     return true;
-  } catch (error) {
-    console.error('Evolution logout network error:', error);
+  } catch (err) {
+    log.error({ err }, 'Evolution logout network error');
     return false;
   }
 }
@@ -196,14 +198,14 @@ export async function getMediaBase64(instance: string, messageKey: any): Promise
     
     if (!res.ok) {
       const errorText = await res.text();
-      console.error(`Evolution getBase64 failed (${res.status}):`, errorText);
+      log.error({ status: res.status, errorText }, 'Evolution getBase64 failed');
       return null;
     }
-    
+
     const data = await res.json();
     return data.base64 || null;
-  } catch (error) {
-    console.error('Failed to get media base64:', error);
+  } catch (err) {
+    log.error({ err }, 'Failed to get media base64');
     return null;
   }
 }

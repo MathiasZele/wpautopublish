@@ -10,6 +10,7 @@ import { newsOrchestrator } from '../lib/news/orchestrator';
 import { type NewsArticle } from '../lib/news/providers/base';
 import { uploadImageFromUrl } from '../lib/cloudinary';
 import { sanitizeArticleHtml } from '../lib/sanitizeHtml';
+import { logger } from '../lib/logger';
 import type { ArticleJobData } from '../lib/queue';
 
 if (!process.env.REDIS_URL) {
@@ -17,6 +18,7 @@ if (!process.env.REDIS_URL) {
 }
 
 const connection = new IORedis(process.env.REDIS_URL, { maxRetriesPerRequest: null });
+const log = logger.child({ module: 'worker' });
 
 interface ResolvedSource {
   topic: string;
@@ -101,7 +103,7 @@ async function findArticleWithImage(opts: {
       const picked = pickArticleWithImage(articles, index, existingUrls);
       if (picked) return picked;
     } catch (e) {
-      console.error('Orchestrator attempt failed', a, e);
+      log.error({ err: e, attempt: a }, 'Orchestrator attempt failed');
     }
   }
 
@@ -140,12 +142,26 @@ function mapSource(a: NewsArticle, keepNewsContext: boolean, overrideTopic?: str
 export const articleWorker = new Worker<ArticleJobData>(
   'article-generation',
   async (job: Job<ArticleJobData>) => {
-    const { 
-      websiteId, mode, manualInput, manualImageUrl, title, content, 
-      articleIndex, categoryIds, autoCategorize, draftMode, whatsAppRequestId, 
-      senderJid, instanceId, provider 
+    const {
+      websiteId, mode, manualInput, manualImageUrl, title, content,
+      articleIndex, categoryIds, autoCategorize, draftMode, whatsAppRequestId,
+      senderJid, instanceId, provider
     } = job.data;
     const idx = articleIndex ?? 0;
+
+    // Idempotence : si ce job.id a déjà produit un ArticleLog SUCCESS,
+    // c'est un retry après une publication WP réussie (ex: kill -9 entre publish
+    // et articleLog.create dans une version précédente). On skip pour éviter le doublon WP.
+    if (job.id) {
+      const existingLog = await prisma.articleLog.findUnique({
+        where: { jobId: job.id },
+        select: { id: true, status: true, wpPostId: true, wpPostUrl: true, estimatedCost: true },
+      });
+      if (existingLog && existingLog.status === 'SUCCESS') {
+        log.info({ jobId: job.id, articleLogId: existingLog.id }, 'Job déjà traité (idempotence) — skip');
+        return { post_id: existingLog.wpPostId, url: existingLog.wpPostUrl, cost: existingLog.estimatedCost };
+      }
+    }
 
     const website = await prisma.website.findUnique({
       where: { id: websiteId },
@@ -158,14 +174,14 @@ export const articleWorker = new Worker<ArticleJobData>(
 
     // ─── Direct Post Bypass ──────────────────────────────────────────────────
     if (title && content) {
-      console.log('Direct post detected, skipping AI generation...');
+      log.info({ websiteId, jobId: job.id }, 'Direct post detected, skipping AI generation');
       
       let finalImageUrl: string | undefined = undefined;
       if (manualImageUrl) {
         try {
           finalImageUrl = await uploadImageFromUrl(manualImageUrl);
         } catch (e) {
-          console.warn('Failed to upload direct image:', e);
+          log.warn({ err: e }, 'Failed to upload direct image');
         }
       }
 
@@ -183,6 +199,7 @@ export const articleWorker = new Worker<ArticleJobData>(
 
       await prisma.articleLog.create({
         data: {
+          jobId: job.id ?? null,
           websiteId: website.id,
           title,
           wpPostId: wpResult.post_id,
@@ -245,7 +262,7 @@ export const articleWorker = new Worker<ArticleJobData>(
           where: { websiteId, sourceUrl: resolvedSource.sourceUrl, status: 'SUCCESS' },
         });
         if (existing) {
-          console.log(`Doublon détecté (race condition) pour ${websiteId} : ${resolvedSource.sourceUrl}`);
+          log.info({ websiteId, sourceUrl: resolvedSource.sourceUrl }, 'Doublon détecté (race condition fallback)');
           throw new Error(`Doublon détecté (race condition): ${resolvedSource.sourceUrl}`);
         }
       }
@@ -276,7 +293,7 @@ export const articleWorker = new Worker<ArticleJobData>(
           availableCategories = wpCats.map((c) => ({ id: c.id, name: c.name }));
         }
       } catch (e) {
-        console.error('Failed to fetch WP categories', e);
+        log.error({ err: e }, 'Failed to fetch WP categories');
       }
     }
 
@@ -317,7 +334,7 @@ export const articleWorker = new Worker<ArticleJobData>(
 
     // Garde-fou : l'IA renvoie parfois 10+ catégories alors qu'on en veut 1-3 max
     if (seo.categoryIds && seo.categoryIds.length > 3) {
-      console.warn(`[worker] ${seo.categoryIds.length} catégories retournées par l'IA, on tronque à 3`);
+      log.warn({ count: seo.categoryIds.length }, 'IA returned too many categories, truncating to 3');
       seo.categoryIds = seo.categoryIds.slice(0, 3);
     }
 
@@ -346,11 +363,11 @@ export const articleWorker = new Worker<ArticleJobData>(
           const escapeHtml = (s: string) =>
             s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
              .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-          console.warn(`[worker] Source "${resolvedSource.sourceName}" non mentionnée par l'IA, injection auto`);
+          log.warn({ sourceName: resolvedSource.sourceName }, 'Source non mentionnée par l\'IA, injection auto en fin d\'article');
           const sourceLine = `<p><em>Source : <a href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(resolvedSource.sourceName)}</a></em></p>`;
           rawHtml = rawHtml.trim() + '\n' + sourceLine;
         } else {
-          console.warn(`[worker] Source URL refusée (protocole non http/https) : ${resolvedSource.sourceUrl.slice(0, 80)}`);
+          log.warn({ sourceUrl: resolvedSource.sourceUrl.slice(0, 80) }, 'Source URL refusée (protocole non http/https)');
         }
       }
     }
@@ -366,7 +383,7 @@ export const articleWorker = new Worker<ArticleJobData>(
       try {
         cloudinaryUrl = await uploadImageFromUrl(candidateImage);
       } catch (e) {
-        console.error(`Cloudinary upload failed for URL "${candidateImage}":`, e);
+        log.error({ err: e, candidateImage }, 'Cloudinary upload failed');
         // On ne bloque plus la publication si l'image échoue, sauf si c'est critique
         // (On peut aussi imaginer un fallback vers une image par défaut ici)
       }
@@ -380,9 +397,10 @@ export const articleWorker = new Worker<ArticleJobData>(
         ? categoryIds
         : profile.defaultCategoryIds;
 
-    console.log(`[Worker] Publication for site: ${website.name}`);
-    console.log(`[Worker] Final Categories: ${JSON.stringify(finalCategoryIds)}`);
-    console.log(`[Worker] Final Tags: ${JSON.stringify(seo.tags)}`);
+    log.info(
+      { siteName: website.name, categoryIds: finalCategoryIds, tags: seo.tags },
+      'Publishing to WordPress',
+    );
 
     const result = await publishToWordPress({
       website,
@@ -400,6 +418,7 @@ export const articleWorker = new Worker<ArticleJobData>(
     try {
       await prisma.articleLog.create({
         data: {
+          jobId: job.id ?? null,
           websiteId,
           title: seo.title || topic,
           wpPostId: result.post_id,
@@ -423,7 +442,10 @@ export const articleWorker = new Worker<ArticleJobData>(
       // pour ce site (race gagnée par lui). On log mais on ne fail pas le job — l'article
       // a tout de même été publié sur WP, on ne veut pas que BullMQ retente.
       if (e?.code === 'P2002') {
-        console.warn(`[worker] doublon DB (race) ${websiteId} | ${resolvedSource?.sourceUrl} — log ignoré`);
+        log.warn(
+          { websiteId, sourceUrl: resolvedSource?.sourceUrl },
+          'Doublon DB (race condition gagnée par autre worker) — log ignoré',
+        );
       } else {
         throw e;
       }
@@ -465,7 +487,7 @@ ${items || '_Aucun article publié_'}`;
       }
     } else if (senderJid && instanceId) {
       // Notification directe pour /direct ou posts manuels unitaires
-      console.log(`Sending direct notification to ${senderJid} on instance ${instanceId}`);
+      log.info({ senderJid: senderJid?.slice(-6), instanceId }, 'Sending direct notification');
       const statusStr = draftMode ? 'enregistré en *BROUILLON*' : 'publié avec succès';
       const summaryStr = (draftMode && seo.metadesc) ? `\n\n📝 *Résumé :* ${seo.metadesc}` : '';
       
@@ -475,7 +497,7 @@ ${items || '_Aucun article publié_'}`;
 🔗 *Lien :* ${result.url}${summaryStr}`;
       await sendWhatsAppMessage(instanceId, senderJid, message);
     } else {
-      console.log('No WhatsApp notification sent (no whatsAppRequestId and no senderJid/instanceId)');
+      log.debug('No WhatsApp notification sent (no whatsAppRequestId and no senderJid/instanceId)');
     }
 
     return { post_id: result.post_id, url: result.url, cost };
@@ -503,10 +525,24 @@ function sanitizeErrorForLog(message: string): string {
 
 articleWorker.on('failed', async (job, err) => {
   if (!job) return;
-  console.error(`Job ${job.id} failed:`, err.message);
+  log.error({ jobId: job.id, errMessage: err.message }, 'Job failed');
   try {
+    // Idempotence : si un log existe déjà pour ce jobId (par ex. SUCCESS
+    // créé en amont puis BullMQ a re-fired un retry), on ne crée pas un
+    // log FAILED contradictoire.
+    if (job.id) {
+      const already = await prisma.articleLog.findUnique({
+        where: { jobId: job.id },
+        select: { status: true },
+      });
+      if (already) {
+        log.info({ jobId: job.id, existingStatus: already.status }, 'Skip FAILED log: jobId déjà loggé');
+        return;
+      }
+    }
     await prisma.articleLog.create({
       data: {
+        jobId: job.id ?? null,
         websiteId: job.data.websiteId,
         title: err.name === 'NoImageFoundError' ? 'Aucune image trouvée' : 'Échec de génération',
         status: 'FAILED',
@@ -551,12 +587,12 @@ ${items || '_Aucun article publié_'}`;
       }
     }
   } catch (logErr) {
-    console.error('Failed to log error', logErr);
+    log.error({ err: logErr }, 'Failed to log job failure to DB');
   }
 });
 
 articleWorker.on('completed', (job, result) => {
-  console.log(`Job ${job.id} completed → ${(result as { url?: string })?.url ?? 'no url'}`);
+  log.info({ jobId: job.id, url: (result as { url?: string })?.url ?? null }, 'Job completed');
 });
 
-console.log('Article worker started');
+log.info('Article worker started');

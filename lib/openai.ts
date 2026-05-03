@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { z } from 'zod';
 
 export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -178,41 +179,59 @@ ${responseFormat}${customSuffix}`.trim();
 }
 
 /**
+ * Schéma Zod strict pour la sortie OpenAI.
+ * - HTML : entre 200 et 50 000 chars (anti payload géant)
+ * - title : 1-200 chars (rejet si vide)
+ * - metadesc / focuskw : bornés
+ * - tags : max 10 strings de max 60 chars chacun
+ * - categoryIds : max 20 entiers positifs (le worker tronquera ensuite à 3)
+ * - language_check : optionnel, 2-8 chars (lowercased dans transform)
+ */
+const ParsedArticleSchema = z.object({
+  html: z.string().min(200).max(50_000),
+  seo: z.object({
+    title: z.string().trim().min(1).max(200),
+    metadesc: z.string().trim().max(500).default(''),
+    focuskw: z.string().trim().max(100).default(''),
+    tags: z.array(z.string().max(60)).max(10).default([]),
+    categoryIds: z.array(z.number().int().nonnegative()).max(20).default([]),
+  }),
+  language_check: z.string().min(2).max(8).optional().transform((v) => v?.toLowerCase()),
+});
+
+/**
  * Parse strict de la réponse OpenAI.
  * Suppose response_format: { type: 'json_object' } côté appelant.
- * Throw explicite si le JSON est invalide ou si les champs requis manquent.
+ * Throw explicite si le JSON est invalide ou si le schéma n'est pas respecté.
  */
 export function parseArticleResponse(raw: string): ParsedArticle {
   const trimmed = raw.trim();
 
-  let data: any;
+  let data: unknown;
   try {
     data = JSON.parse(trimmed);
   } catch (e) {
     throw new Error(`Réponse IA non-JSON : ${(e as Error).message}. Début : ${trimmed.slice(0, 120)}`);
   }
 
-  if (!data || typeof data !== 'object') {
-    throw new Error('Réponse IA : objet JSON attendu');
+  const result = ParsedArticleSchema.safeParse(data);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `${i.path.join('.')}: ${i.message}`)
+      .join('; ');
+    throw new Error(`Réponse IA invalide : ${issues}`);
   }
 
-  const html = typeof data.html === 'string' ? data.html : '';
-  if (!html || html.length < 200) {
-    throw new Error(`HTML manquant ou trop court (${html.length} chars)`);
-  }
-
-  const seoIn = data.seo && typeof data.seo === 'object' ? data.seo : {};
-  const seo = {
-    title: typeof seoIn.title === 'string' ? seoIn.title.trim() : '',
-    metadesc: typeof seoIn.metadesc === 'string' ? seoIn.metadesc.trim() : '',
-    focuskw: typeof seoIn.focuskw === 'string' ? seoIn.focuskw.trim() : '',
-    tags: Array.isArray(seoIn.tags) ? seoIn.tags.filter((t: any) => typeof t === 'string').slice(0, 10) : [],
-    categoryIds: Array.isArray(seoIn.categoryIds) ? seoIn.categoryIds.filter((n: any) => Number.isInteger(n)) : [],
+  const parsed = result.data;
+  return {
+    html: parsed.html,
+    seo: {
+      title: parsed.seo.title,
+      metadesc: parsed.seo.metadesc,
+      focuskw: parsed.seo.focuskw,
+      tags: parsed.seo.tags,
+      categoryIds: parsed.seo.categoryIds,
+    },
+    languageCheck: parsed.language_check,
   };
-
-  if (!seo.title) throw new Error('SEO title manquant');
-
-  const languageCheck = typeof data.language_check === 'string' ? data.language_check.trim().toLowerCase() : undefined;
-
-  return { html, seo, languageCheck };
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -10,7 +11,9 @@ const createSchema = z.object({
   url: z.string().url().max(500),
   wpUsername: z.string().min(1).max(60),
   wpAppPassword: z.string().min(1).max(200),
-  customEndpointKey: z.string().min(8).max(256),
+  // Optionnel : si non fourni, le serveur génère une clé sécurisée et la
+  // renvoie une seule fois dans la réponse (pattern display-once).
+  customEndpointKey: z.string().min(8).max(256).optional(),
 });
 
 export async function GET() {
@@ -56,6 +59,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 
+  // Génération côté serveur si pas fournie : 24 bytes hex = 192 bits d'entropie.
+  // Renvoyée en clair dans la réponse, jamais accessible de nouveau ensuite.
+  const endpointSecret = data.customEndpointKey ?? randomBytes(24).toString('hex');
+
   const website = await prisma.website.create({
     data: {
       userId: session.user.id,
@@ -63,11 +70,14 @@ export async function POST(req: Request) {
       url: data.url.replace(/\/$/, ''),
       wpUsername: data.wpUsername,
       wpAppPassword: encrypt(data.wpAppPassword),
-      customEndpointKey: encrypt(data.customEndpointKey),
+      customEndpointKey: encrypt(endpointSecret),
       profile: { create: {} },
     },
     select: { id: true, name: true, url: true, status: true },
   });
 
-  return NextResponse.json(website, { status: 201 });
+  // Display-once : on renvoie la clé en clair UNIQUEMENT à la création.
+  // Le client doit l'afficher avec un avertissement et inviter l'utilisateur
+  // à la copier dans le plugin WordPress (page Réglages → WP AutoPublish).
+  return NextResponse.json({ ...website, endpointSecret }, { status: 201 });
 }
