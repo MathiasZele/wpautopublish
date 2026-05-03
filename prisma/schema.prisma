@@ -145,6 +145,12 @@ model ArticleLog {
   // Empêche de publier 2 fois le même article source sur le même site (race condition).
   // Postgres autorise plusieurs NULL dans un index unique → les articles sans source ne sont pas affectés.
   @@unique([websiteId, sourceUrl])
+
+  // Index pour les requêtes du dashboard et de l'historique :
+  //  - findMany({ where: { website: { userId } }, orderBy: { createdAt: desc } })
+  //  - count({ where: { status: 'SUCCESS' } })
+  @@index([websiteId, createdAt(sort: Desc)])
+  @@index([status])
 }
 
 model WhatsAppRequest {
