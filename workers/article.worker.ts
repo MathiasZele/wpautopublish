@@ -326,13 +326,32 @@ export const articleWorker = new Worker<ArticleJobData>(
 
     // Garde-fou : si la source n'est pas mentionnée dans le corps malgré la directive,
     // on l'injecte en fin d'article pour respecter la traçabilité éditoriale.
+    // Sécurité : on échappe l'URL et le nom — un sourceUrl malveillant ne peut pas
+    // injecter de javascript: ou de balise via la concaténation (qui passe ENSUITE
+    // par sanitizeArticleHtml).
     if (resolvedSource?.sourceName && resolvedSource?.sourceUrl) {
       const lowerHtml = rawHtml.toLowerCase();
       const lowerSource = resolvedSource.sourceName.toLowerCase();
       if (!lowerHtml.includes(lowerSource)) {
-        console.warn(`[worker] Source "${resolvedSource.sourceName}" non mentionnée par l'IA, injection auto`);
-        const sourceLine = `<p><em>Source : <a href="${resolvedSource.sourceUrl}" target="_blank" rel="noopener noreferrer">${resolvedSource.sourceName}</a></em></p>`;
-        rawHtml = rawHtml.trim() + '\n' + sourceLine;
+        // Validation stricte de l'URL : seul http(s) est accepté
+        let safeHref: string | null = null;
+        try {
+          const u = new URL(resolvedSource.sourceUrl);
+          if (u.protocol === 'http:' || u.protocol === 'https:') {
+            safeHref = u.toString();
+          }
+        } catch { /* invalid URL */ }
+
+        if (safeHref) {
+          const escapeHtml = (s: string) =>
+            s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+          console.warn(`[worker] Source "${resolvedSource.sourceName}" non mentionnée par l'IA, injection auto`);
+          const sourceLine = `<p><em>Source : <a href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(resolvedSource.sourceName)}</a></em></p>`;
+          rawHtml = rawHtml.trim() + '\n' + sourceLine;
+        } else {
+          console.warn(`[worker] Source URL refusée (protocole non http/https) : ${resolvedSource.sourceUrl.slice(0, 80)}`);
+        }
       }
     }
 
@@ -378,26 +397,37 @@ export const articleWorker = new Worker<ArticleJobData>(
       tags: seo.tags,
     });
 
-    await prisma.articleLog.create({
-      data: {
-        websiteId,
-        title: seo.title || topic,
-        wpPostId: result.post_id,
-        wpPostUrl: result.url,
-        status: 'SUCCESS',
-        mode,
-        inputTokens,
-        outputTokens,
-        estimatedCost: cost,
-        sourceUrl: resolvedSource?.sourceUrl,
-        sourceName: resolvedSource?.sourceName,
-        providerName: resolvedSource?.providerName,
-        imageUrl: cloudinaryUrl,
-        categoryIds: finalCategoryIds,
-        tags: seo.tags || [],
-        publishedAt: new Date(),
-      },
-    });
+    try {
+      await prisma.articleLog.create({
+        data: {
+          websiteId,
+          title: seo.title || topic,
+          wpPostId: result.post_id,
+          wpPostUrl: result.url,
+          status: 'SUCCESS',
+          mode,
+          inputTokens,
+          outputTokens,
+          estimatedCost: cost,
+          sourceUrl: resolvedSource?.sourceUrl,
+          sourceName: resolvedSource?.sourceName,
+          providerName: resolvedSource?.providerName,
+          imageUrl: cloudinaryUrl,
+          categoryIds: finalCategoryIds,
+          tags: seo.tags || [],
+          publishedAt: new Date(),
+        },
+      });
+    } catch (e: any) {
+      // P2002 = unique constraint violation : un autre worker a déjà publié ce sourceUrl
+      // pour ce site (race gagnée par lui). On log mais on ne fail pas le job — l'article
+      // a tout de même été publié sur WP, on ne veut pas que BullMQ retente.
+      if (e?.code === 'P2002') {
+        console.warn(`[worker] doublon DB (race) ${websiteId} | ${resolvedSource?.sourceUrl} — log ignoré`);
+      } else {
+        throw e;
+      }
+    }
 
     // Update WhatsApp Request if needed
     if (whatsAppRequestId) {

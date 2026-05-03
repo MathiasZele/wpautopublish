@@ -218,21 +218,18 @@ export async function changeWordPressPostStatus(
   const appPassword = decrypt(website.wpAppPassword);
   const auth = `Basic ${Buffer.from(`${username}:${appPassword}`).toString('base64')}`;
 
-  let url = `${baseUrl}/wp-json/wp/v2/posts/${postId}`;
-  let method = 'POST';
-  let body = JSON.stringify({ status });
-
-  // Note: Both POST with { status: 'trash' } and DELETE work in WP, 
-  // but POST is generally safer against some firewall rules.
-
+  const url = `${baseUrl}/wp-json/wp/v2/posts/${postId}`;
+  await assertPublicUrl(url); // anti-SSRF : refuse IPs privées même si l'URL en DB a été modifiée
 
   const res = await fetch(url, {
-    method,
+    method: 'POST',
     headers: {
       Authorization: auth,
       'Content-Type': 'application/json',
+      'User-Agent': 'WPAutoPublish/1.4',
     },
-    body: body ? body : undefined,
+    body: JSON.stringify({ status }),
+    redirect: 'manual',
   });
 
   if (!res.ok) {
@@ -253,8 +250,12 @@ export async function getWordPressPostInfo(
   const appPassword = decrypt(website.wpAppPassword);
   const auth = `Basic ${Buffer.from(`${username}:${appPassword}`).toString('base64')}`;
 
-  const res = await fetch(`${baseUrl}/wp-json/wp/v2/posts/${postId}`, {
-    headers: { Authorization: auth },
+  const url = `${baseUrl}/wp-json/wp/v2/posts/${postId}`;
+  await assertPublicUrl(url);
+
+  const res = await fetch(url, {
+    headers: { Authorization: auth, 'User-Agent': 'WPAutoPublish/1.4' },
+    redirect: 'manual',
   });
 
   if (!res.ok) return null;

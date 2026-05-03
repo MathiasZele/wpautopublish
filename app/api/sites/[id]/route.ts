@@ -6,25 +6,25 @@ import { encrypt } from '@/lib/encryption';
 import { assertPublicUrl, UnsafeUrlError } from '@/lib/safeUrl';
 
 const updateSchema = z.object({
-  name: z.string().min(1).optional(),
-  url: z.string().url().optional(),
-  wpUsername: z.string().optional(),
-  wpAppPassword: z.string().optional(),
-  customEndpointKey: z.string().optional(),
+  name: z.string().min(1).max(100).optional(),
+  url: z.string().url().max(500).optional(),
+  wpUsername: z.string().max(60).optional(),
+  wpAppPassword: z.string().max(200).optional(),
+  customEndpointKey: z.string().min(8).max(256).optional(),
   status: z.enum(['PENDING', 'ACTIVE', 'ERROR', 'PAUSED']).optional(),
   profile: z
     .object({
-      language: z.string().optional(),
-      topics: z.array(z.string()).optional(),
-      tone: z.string().optional(),
+      language: z.string().max(8).optional(),
+      topics: z.array(z.string().max(120)).max(50).optional(),
+      tone: z.string().max(40).optional(),
       articlesPerDay: z.number().int().min(0).max(20).optional(),
       autoMode: z.boolean().optional(),
       autoImage: z.boolean().optional(),
-      customPrompt: z.string().nullable().optional(),
-      newsApiQuery: z.string().nullable().optional(),
+      customPrompt: z.string().max(2000).nullable().optional(),
+      newsApiQuery: z.string().max(500).nullable().optional(),
       maxArticleAgeHours: z.number().int().min(1).max(8760).optional(),
-      defaultCategoryIds: z.array(z.number().int()).optional(),
-      preferredProvider: z.string().optional(),
+      defaultCategoryIds: z.array(z.number().int()).max(20).optional(),
+      preferredProvider: z.string().max(40).optional(),
     })
     .optional(),
 });

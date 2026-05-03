@@ -24,6 +24,7 @@ model User {
   accounts Account[]
   sessions Session[]
   websites Website[]
+  allowedWhatsappNumbers WhatsAppAllowedNumber[]
 }
 
 model Account {
@@ -84,6 +85,7 @@ model Website {
   user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   profile  Profile?
   articles ArticleLog[]
+  whatsAppRequests WhatsAppRequest[]
 }
 
 enum WebsiteStatus {
@@ -139,6 +141,10 @@ model ArticleLog {
   createdAt     DateTime      @default(now())
 
   website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  // Empêche de publier 2 fois le même article source sur le même site (race condition).
+  // Postgres autorise plusieurs NULL dans un index unique → les articles sans source ne sont pas affectés.
+  @@unique([websiteId, sourceUrl])
 }
 
 model WhatsAppRequest {
@@ -153,13 +159,20 @@ model WhatsAppRequest {
   articleSummaries String[] @default([])
   status           String   @default("PENDING") // PENDING, COMPLETED, FAILED
   createdAt    DateTime @default(now())
+
+  website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
 }
 
 model WhatsAppAllowedNumber {
   id          String   @id @default(cuid())
-  phoneNumber String   @unique // ex: "33612345678" (no @s.whatsapp.net)
-  label       String?           // optional friendly name
+  userId      String
+  phoneNumber String              // ex: "33612345678" (no @s.whatsapp.net)
+  label       String?              // optional friendly name
   createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, phoneNumber])
 }
 
 

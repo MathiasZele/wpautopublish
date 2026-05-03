@@ -8,18 +8,19 @@ const schema = z.object({
   label: z.string().max(50).optional(),
 });
 
-// GET — list all allowed numbers
+// GET — list allowed numbers (de l'utilisateur connecté uniquement)
 export async function GET() {
   const session = await auth();
   if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
 
   const numbers = await prisma.whatsAppAllowedNumber.findMany({
+    where: { userId: session.user.id },
     orderBy: { createdAt: 'asc' },
   });
   return NextResponse.json(numbers);
 }
 
-// POST — add a new number
+// POST — add a new number scoped to the current user
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
@@ -33,12 +34,13 @@ export async function POST(req: Request) {
   try {
     const entry = await prisma.whatsAppAllowedNumber.create({
       data: {
+        userId: session.user.id,
         phoneNumber: parsed.data.phoneNumber,
         label: parsed.data.label ?? null,
       },
     });
     return NextResponse.json(entry, { status: 201 });
   } catch {
-    return NextResponse.json({ error: 'Ce numéro existe déjà.' }, { status: 409 });
+    return NextResponse.json({ error: 'Ce numéro existe déjà pour votre compte.' }, { status: 409 });
   }
 }

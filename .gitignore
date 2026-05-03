@@ -11,3 +11,11 @@ build/
 *.tsbuildinfo
 prisma/migrations/dev.db*
 wp-helper-plugin*.zip
+
+# Local debug / scratch
+scratch/
+check_*.ts
+_*.cjs
+_*.ts
+debug_*.js
+debug_*.ts

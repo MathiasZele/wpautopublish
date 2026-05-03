@@ -19,17 +19,15 @@ export class MediastackProvider extends NewsProvider {
       sort: 'published_desc',
     });
 
-    // Mediastack : on tente HTTPS d'abord (compte payant). Si échec → fallback HTTP avec warning.
-    let response = await safeFetch(`https://api.mediastack.com/v1/news?${params}`, {
+    // HTTPS uniquement — pas de fallback HTTP (anti MITM injection).
+    // Si HTTPS échoue, le provider est ignoré pour cette requête.
+    const response = await safeFetch(`https://api.mediastack.com/v1/news?${params}`, {
       cache: 'no-store',
     });
     if (!response || !response.ok) {
       const status = response?.status ?? 'no-response';
-      console.warn(`[mediastack] HTTPS échoué (${status}), fallback HTTP — risque sécurité, considérer un upgrade payant`);
-      response = await safeFetch(`http://api.mediastack.com/v1/news?${params}`, {
-        cache: 'no-store',
-      });
-      if (!response || !response.ok) return [];
+      console.warn(`[mediastack] HTTPS unavailable (${status}), provider skipped — upgrade to a paid plan for HTTPS`);
+      return [];
     }
 
     try {

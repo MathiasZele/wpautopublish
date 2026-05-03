@@ -7,10 +7,10 @@ import { assertPublicUrl, UnsafeUrlError } from '@/lib/safeUrl';
 
 const createSchema = z.object({
   name: z.string().min(1).max(100),
-  url: z.string().url(),
-  wpUsername: z.string().min(1),
-  wpAppPassword: z.string().min(1),
-  customEndpointKey: z.string().min(8),
+  url: z.string().url().max(500),
+  wpUsername: z.string().min(1).max(60),
+  wpAppPassword: z.string().min(1).max(200),
+  customEndpointKey: z.string().min(8).max(256),
 });
 
 export async function GET() {

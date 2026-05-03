@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { getArticleQueue } from '@/lib/queue';
 import { sendWhatsAppMessage, getMediaBase64 } from '@/lib/evolution';
@@ -6,13 +7,24 @@ import { changeWordPressPostStatus, getWordPressPostInfo, fetchWordPressCategori
 import { uploadImageFromBuffer } from '@/lib/cloudinary';
 import { decrypt } from '@/lib/encryption';
 
+function checkWebhookAuth(authHeader: string | null): boolean {
+  const secret = process.env.EVOLUTION_WEBHOOK_SECRET;
+  if (!secret) {
+    console.error('[webhook] EVOLUTION_WEBHOOK_SECRET not configured — refusing all requests');
+    return false;
+  }
+  const provided = (authHeader ?? '').replace(/^Bearer\s+/i, '');
+  const a = Buffer.from(provided);
+  const b = Buffer.from(secret);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const secret = process.env.EVOLUTION_WEBHOOK_SECRET;
     const authHeader = req.headers.get('apikey') || req.headers.get('authorization');
-    
-    if (secret && authHeader !== secret && authHeader !== `Bearer ${secret}`) {
-      console.warn('Webhook unauthorized: Invalid secret token provided');
+    if (!checkWebhookAuth(authHeader)) {
+      console.warn('[webhook] unauthorized');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -29,37 +41,32 @@ export async function POST(req: NextRequest) {
 
     const message = body.data;
     const remoteJid = message.key.remoteJid;
-    
+
     // Détection récursive de l'image pour gérer ephemeralMessage, viewOnceMessage, documentMessage, etc.
-    const findImageMessage = (msg: any): any => {
-      if (!msg) return null;
+    // depth borné à 5 pour éviter un stack overflow sur payload structuré malicieux.
+    const findImageMessage = (msg: any, depth = 0): any => {
+      if (!msg || depth > 5) return null;
       if (msg.imageMessage) return msg.imageMessage;
-      // Cas où l'image est envoyée en tant que document (fichier)
       if (msg.documentMessage && msg.documentMessage.mimetype?.startsWith('image/')) {
         return msg.documentMessage;
       }
-      if (msg.viewOnceMessage?.message) return findImageMessage(msg.viewOnceMessage.message);
-      if (msg.ephemeralMessage?.message) return findImageMessage(msg.ephemeralMessage.message);
+      if (msg.viewOnceMessage?.message) return findImageMessage(msg.viewOnceMessage.message, depth + 1);
+      if (msg.ephemeralMessage?.message) return findImageMessage(msg.ephemeralMessage.message, depth + 1);
       return null;
     };
-    
+
     const imageMsg = findImageMessage(message.message);
     const isImage = !!imageMsg;
-    
-    // Extraction du texte (depuis conversation, message étendu ou caption d'image/doc)
-    const text = message.message?.conversation || 
-                 message.message?.extendedTextMessage?.text || 
+
+    const text = message.message?.conversation ||
+                 message.message?.extendedTextMessage?.text ||
                  imageMsg?.caption ||
-                 imageMsg?.fileName || // Pour les documents
+                 imageMsg?.fileName ||
                  '';
-    
-    console.log('--- NEW MESSAGE ---');
-    console.log('Sender:', remoteJid);
-    console.log('isImage:', isImage);
-    console.log('text:', text);
-    if (!isImage && !text) {
-      console.log('Message structure:', JSON.stringify(message.message, null, 2));
-    }
+
+    // Logs sans PII : on tronque le numéro et on log juste la longueur du message.
+    const senderHash = typeof remoteJid === 'string' ? remoteJid.slice(-6) : '?';
+    console.log(`[wa] msg from ...${senderHash} | image=${isImage} | textLen=${text.length}`);
 
     // Si pas de texte ET pas d'image, on ignore (permet de laisser passer les images sans texte)
     if (!text && !isImage) {
@@ -77,22 +84,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'ignored_self' });
     }
 
-    // Security: Allowlist — check against DB-managed allowed numbers
-    console.log('Checking allowlist...');
-    const allowedNumbers = await prisma.whatsAppAllowedNumber.findMany({ select: { phoneNumber: true } });
-    console.log('Allowed numbers count:', allowedNumbers.length);
-
-    if (allowedNumbers.length > 0) {
-      // remoteJid format: "33612345678@s.whatsapp.net"
-      const senderNumber = remoteJid.replace(/@.+$/, '');
-      const isAllowed = allowedNumbers.some(n => n.phoneNumber === senderNumber);
-      console.log('Is sender allowed?', isAllowed, senderNumber);
-      if (!isAllowed) {
-        return NextResponse.json({ status: 'unauthorized' });
-      }
+    // Security: Allowlist — résolution du userId à partir du numéro envoyeur.
+    // Le numéro doit être whitelisté ET on récupère son owner pour scoper toutes
+    // les requêtes ultérieures (sites, articles, historique).
+    if (typeof remoteJid !== 'string') {
+      return NextResponse.json({ status: 'invalid_jid' });
     }
-
-
+    const senderNumber = remoteJid.replace(/@.+$/, '');
+    const allowed = await prisma.whatsAppAllowedNumber.findFirst({
+      where: { phoneNumber: senderNumber },
+      select: { userId: true },
+    });
+    if (!allowed) {
+      return NextResponse.json({ status: 'unauthorized' });
+    }
+    const ownerUserId = allowed.userId;
 
     if (!text && !isImage) return NextResponse.json({ status: 'no_text' });
 
@@ -103,7 +109,7 @@ export async function POST(req: NextRequest) {
 
     if (session) {
       if (session.step === 'WAITING_FOR_TEXT') {
-        const website = await prisma.website.findUnique({ where: { id: session.websiteId } });
+        const website = await prisma.website.findFirst({ where: { id: session.websiteId, userId: ownerUserId } });
         if (!website) {
           await prisma.whatsAppSession.delete({ where: { id: session.id } });
           return NextResponse.json({ status: 'session_reset_site_missing' });
@@ -123,7 +129,7 @@ export async function POST(req: NextRequest) {
 
       if (session.step === 'WAITING_FOR_IMAGE') {
         const sessionData = session.data as any;
-        const website = await prisma.website.findUnique({ where: { id: session.websiteId } });
+        const website = await prisma.website.findFirst({ where: { id: session.websiteId, userId: ownerUserId } });
         
         if (!website) {
           await prisma.whatsAppSession.delete({ where: { id: session.id } });
@@ -135,20 +141,30 @@ export async function POST(req: NextRequest) {
         console.log(`Step WAITING_FOR_IMAGE. isImage: ${isImage}, text: ${text}`);
 
         if (isImage) {
-          // Gérer l'image envoyée directement
-          console.log('Detected image message, fetching base64...');
           await sendWhatsAppMessage(instanceName, remoteJid, "⏳ Traitement de l'image...");
           const base64 = await getMediaBase64(instanceName, message.key);
-          if (base64) {
-            console.log('Base64 fetched successfully, uploading to Cloudinary...');
-            const buffer = Buffer.from(base64, 'base64');
-            imageUrl = await uploadImageFromBuffer(buffer, `whatsapp_${Date.now()}`);
-            console.log('Cloudinary URL:', imageUrl);
-          } else {
-            console.error('Failed to fetch base64 from Evolution API');
+          if (!base64) {
+            console.error('[wa] base64 fetch failed');
             await sendWhatsAppMessage(instanceName, remoteJid, "⚠️ Impossible de récupérer l'image. Veuillez réessayer ou envoyer un lien.");
             return NextResponse.json({ status: 'image_fetch_failed' });
           }
+
+          // Anti-DoS : la taille en bytes est environ 0.75 × longueur base64.
+          // 10 MB max → ~13.4 MB de base64.
+          const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+          const estimatedBytes = Math.floor(base64.length * 0.75);
+          if (estimatedBytes > MAX_IMAGE_BYTES) {
+            console.warn(`[wa] image trop grande : ${estimatedBytes} bytes > ${MAX_IMAGE_BYTES}`);
+            await sendWhatsAppMessage(instanceName, remoteJid, "⚠️ Image trop volumineuse (max 10 MB). Veuillez en envoyer une plus petite.");
+            return NextResponse.json({ status: 'image_too_large' });
+          }
+
+          const buffer = Buffer.from(base64, 'base64');
+          if (buffer.length > MAX_IMAGE_BYTES) {
+            await sendWhatsAppMessage(instanceName, remoteJid, "⚠️ Image trop volumineuse (max 10 MB).");
+            return NextResponse.json({ status: 'image_too_large' });
+          }
+          imageUrl = await uploadImageFromBuffer(buffer, `whatsapp_${Date.now()}`);
         } else {
           // Gérer le texte (URL ou 'auto')
           if (text.toLowerCase() !== 'auto') {
@@ -202,6 +218,7 @@ export async function POST(req: NextRequest) {
     // 2. Commande /sites
     if (lowText.startsWith('/sites')) {
       const websites = await prisma.website.findMany({
+        where: { userId: ownerUserId },
         orderBy: { name: 'asc' }
       });
       if (websites.length === 0) {
@@ -217,7 +234,7 @@ export async function POST(req: NextRequest) {
     const catsMatch = text.match(/^\/cats\s+(.+)/i);
     if (catsMatch) {
       const siteQuery = catsMatch[1].trim();
-      const websites = await prisma.website.findMany();
+      const websites = await prisma.website.findMany({ where: { userId: ownerUserId } });
       const website = websites.find(w => 
         w.name.toLowerCase().includes(siteQuery.toLowerCase()) || 
         siteQuery.toLowerCase().includes(w.name.toLowerCase())
@@ -252,6 +269,7 @@ export async function POST(req: NextRequest) {
     // 3. Commande /status
     if (lowText.startsWith('/status')) {
       const lastRequests = await prisma.whatsAppRequest.findMany({
+        where: { website: { userId: ownerUserId } },
         take: 5,
         orderBy: { createdAt: 'desc' }
       });
@@ -267,9 +285,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'status_sent' });
     }
 
-    // 4. Commande /vider-historique
+    // 4. Commande /vider-historique (scopé au user via ses sites)
     if (lowText.startsWith('/vider-historique')) {
-      const deleted = await prisma.whatsAppRequest.deleteMany({});
+      const deleted = await prisma.whatsAppRequest.deleteMany({
+        where: { website: { userId: ownerUserId } },
+      });
       await sendWhatsAppMessage(instanceName, remoteJid, `🧹 Historique WhatsApp vidé (${deleted.count} requêtes supprimées).`);
       return NextResponse.json({ status: 'history_cleared' });
     }
@@ -280,10 +300,8 @@ export async function POST(req: NextRequest) {
       const link = deleteMatch[1].trim();
       const log = await prisma.articleLog.findFirst({
         where: {
-          OR: [
-            { wpPostUrl: { equals: link } },
-            { wpPostUrl: { contains: link } }
-          ]
+          wpPostUrl: { equals: link },
+          website: { userId: ownerUserId },
         },
         include: { website: true },
         orderBy: { publishedAt: 'desc' }
@@ -309,10 +327,8 @@ export async function POST(req: NextRequest) {
       const link = draftMatch[1].trim();
       const log = await prisma.articleLog.findFirst({
         where: {
-          OR: [
-            { wpPostUrl: { equals: link } },
-            { wpPostUrl: { contains: link } }
-          ]
+          wpPostUrl: { equals: link },
+          website: { userId: ownerUserId },
         },
         include: { website: true },
         orderBy: { publishedAt: 'desc' }
@@ -338,10 +354,8 @@ export async function POST(req: NextRequest) {
       const link = publishMatch[1].trim();
       const log = await prisma.articleLog.findFirst({
         where: {
-          OR: [
-            { wpPostUrl: { equals: link } },
-            { wpPostUrl: { contains: link } }
-          ]
+          wpPostUrl: { equals: link },
+          website: { userId: ownerUserId },
         },
         include: { website: true },
         orderBy: { publishedAt: 'desc' }
@@ -369,10 +383,8 @@ export async function POST(req: NextRequest) {
       // Recherche plus robuste : on cherche l'URL exacte ou qui contient le lien fourni
       const log = await prisma.articleLog.findFirst({
         where: {
-          OR: [
-            { wpPostUrl: { equals: link } },
-            { wpPostUrl: { contains: link } }
-          ]
+          wpPostUrl: { equals: link },
+          website: { userId: ownerUserId },
         },
         include: { website: true },
         orderBy: { publishedAt: 'desc' }
@@ -398,7 +410,7 @@ export async function POST(req: NextRequest) {
     const directMatch = text.match(/^\/direct\s+(.+)/i);
     if (directMatch) {
       const siteQuery = directMatch[1].trim();
-      const websites = await prisma.website.findMany();
+      const websites = await prisma.website.findMany({ where: { userId: ownerUserId } });
       const website = websites.find(w => 
         w.name.toLowerCase().includes(siteQuery.toLowerCase()) || 
         siteQuery.toLowerCase().includes(w.name.toLowerCase())
@@ -423,7 +435,7 @@ export async function POST(req: NextRequest) {
     const formatMatch = text.match(/^\/format\s+(.+)/i);
     if (formatMatch) {
       const siteQuery = formatMatch[1].trim();
-      const websites = await prisma.website.findMany();
+      const websites = await prisma.website.findMany({ where: { userId: ownerUserId } });
       const website = websites.find(w => 
         w.name.toLowerCase().includes(siteQuery.toLowerCase()) || 
         siteQuery.toLowerCase().includes(w.name.toLowerCase())
@@ -457,7 +469,7 @@ export async function POST(req: NextRequest) {
         ? catIdsString.split(',').map((id: string) => parseInt(id.trim())).filter((id: number) => !isNaN(id))
         : [];
 
-      const websites = await prisma.website.findMany();
+      const websites = await prisma.website.findMany({ where: { userId: ownerUserId } });
       const website = websites.find(w => 
         w.name.toLowerCase().includes(siteQuery.toLowerCase()) || 
         siteQuery.toLowerCase().includes(w.name.toLowerCase())
