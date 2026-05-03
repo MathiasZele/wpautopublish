@@ -29,7 +29,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
     ...(searchParams.q ? { title: { contains: searchParams.q, mode: 'insensitive' as const } } : {}),
   };
 
-  const [logs, total, sites, stats] = await Promise.all([
+  const [logs, total, sites, stats, byStatus] = await Promise.all([
     prisma.articleLog.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -48,10 +48,16 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
       _sum: { estimatedCost: true, inputTokens: true, outputTokens: true },
       _count: { id: true },
     }),
+    // groupBy en parallèle avec total et stats → on évite un round-trip DB séparé pour successCount
+    prisma.articleLog.groupBy({
+      by: ['status'],
+      where,
+      _count: true,
+    }),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const successCount = await prisma.articleLog.count({ where: { ...where, status: 'SUCCESS' } });
+  const successCount = byStatus.find((s) => s.status === 'SUCCESS')?._count ?? 0;
 
   return (
     <div className="space-y-6">

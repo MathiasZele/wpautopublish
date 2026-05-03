@@ -2,12 +2,12 @@
 /**
  * Plugin Name: WP AutoPublish Helper
  * Description: Endpoint REST sécurisé pour réception d'articles générés par IA.
- * Version:     1.4.0
+ * Version:     1.4.1
  */
 
 defined('ABSPATH') || exit;
 
-const WAP_ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const WAP_ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
 const WAP_MAX_DOWNLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
 
 add_action('rest_api_init', function () {
@@ -195,7 +195,7 @@ function wap_sideload_image(string $url, int $post_id, string $alt) {
     }
 
     // Nom de fichier propre, jamais dérivé directement de l'URL
-    $ext_map = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif'];
+    $ext_map = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif', 'image/avif' => 'avif'];
     $name = 'img-' . $post_id . '-' . wp_generate_password(8, false) . '.' . ($ext_map[$info['mime']] ?? 'jpg');
 
     $file_array = ['name' => sanitize_file_name($name), 'tmp_name' => $tmp];

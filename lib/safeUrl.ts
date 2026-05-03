@@ -90,11 +90,3 @@ export async function assertPublicUrl(rawUrl: string): Promise<URL> {
   return url;
 }
 
-/**
- * Wrapper fetch qui valide l'URL avant requête et désactive le suivi automatique
- * de redirections (les redirections doivent être validées manuellement).
- */
-export async function safeFetch(rawUrl: string, init: RequestInit = {}): Promise<Response> {
-  await assertPublicUrl(rawUrl);
-  return fetch(rawUrl, { ...init, redirect: 'manual' });
-}

@@ -172,6 +172,11 @@ model WhatsAppRequest {
   createdAt    DateTime @default(now())
 
   website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  // Pour /status (5 derniers par site) et /api/whatsapp/logs (50 derniers par user)
+  @@index([websiteId, createdAt(sort: Desc)])
+  // Pour les éventuelles recherches par sender (futur)
+  @@index([senderJid, createdAt])
 }
 
 model WhatsAppAllowedNumber {

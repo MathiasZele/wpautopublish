@@ -1,6 +1,6 @@
 import { Website } from '@prisma/client';
 import { decrypt } from './encryption';
-import { assertPublicUrl, safeFetch } from './safeUrl';
+import { assertPublicUrl } from './safeUrl';
 import { getOrSet } from './cache';
 
 interface PublishParams {
