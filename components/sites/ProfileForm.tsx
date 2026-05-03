@@ -4,6 +4,20 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCcw, ImageIcon, Sparkles, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input, Textarea } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface WPCategory {
   id: number;
@@ -119,10 +133,7 @@ export function ProfileForm({ siteId, initial }: ProfileFormProps) {
       maxArticleAgeHours: state.maxArticleAgeHours,
       defaultCategoryIds: state.defaultCategoryIds,
       preferredProvider: state.preferredProvider,
-      topics: topicsInput
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
+      topics: topicsInput.split(',').map((s) => s.trim()).filter(Boolean),
     };
 
     const res = await fetch(`/api/sites/${siteId}`, {
@@ -141,212 +152,270 @@ export function ProfileForm({ siteId, initial }: ProfileFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-6 space-y-5">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Langue</label>
-          <select
-            value={state.language}
-            onChange={(e) => setState({ ...state, language: e.target.value })}
-            className="w-full px-3 py-2 border rounded-lg"
-          >
-            <option value="fr">Français</option>
-            <option value="en">English</option>
-            <option value="es">Español</option>
-            <option value="de">Deutsch</option>
-            <option value="it">Italiano</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Ton</label>
-          <select
-            value={state.tone}
-            onChange={(e) => setState({ ...state, tone: e.target.value })}
-            className="w-full px-3 py-2 border rounded-lg"
-          >
-            <option value="informatif">Informatif</option>
-            <option value="expert">Expert</option>
-            <option value="vulgarisé">Vulgarisé</option>
-            <option value="engageant">Engageant</option>
-            <option value="formel">Formel</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="bg-gradient-to-br from-brand-50 to-purple-50 border border-brand-200 rounded-xl p-4">
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 text-sm font-semibold text-brand-700">
-              <Sparkles size={16} />
-              Configuration automatique
+    <Card>
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Auto-generate IA panel */}
+          <div className="rounded-lg border bg-gradient-to-br from-primary/5 to-primary/0 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Configuration automatique par IA
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Analyse les catégories et articles existants du site WordPress pour générer
+                  une requête NewsAPI et des thématiques cohérentes.
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={handleAutoGenerate}
+                disabled={generating}
+                size="sm"
+              >
+                {generating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {generating ? 'Génération…' : "Générer avec l'IA"}
+              </Button>
             </div>
-            <p className="text-xs text-gray-600 mt-1">
-              Analyse les catégories, articles récents et infos SEO du site WordPress pour générer
-              une requête NewsAPI et des thématiques cohérentes.
+            {reasoning && (
+              <div className="mt-3 text-xs text-muted-foreground italic border-l-2 border-primary/40 pl-3">
+                {reasoning}
+              </div>
+            )}
+          </div>
+
+          {/* Language + Tone */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Langue</Label>
+              <Select
+                value={state.language}
+                onValueChange={(v) => setState({ ...state, language: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fr">Français</SelectItem>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="es">Español</SelectItem>
+                  <SelectItem value="de">Deutsch</SelectItem>
+                  <SelectItem value="it">Italiano</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Ton</Label>
+              <Select
+                value={state.tone}
+                onValueChange={(v) => setState({ ...state, tone: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="informatif">Informatif</SelectItem>
+                  <SelectItem value="expert">Expert</SelectItem>
+                  <SelectItem value="vulgarisé">Vulgarisé</SelectItem>
+                  <SelectItem value="engageant">Engageant</SelectItem>
+                  <SelectItem value="formel">Formel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Topics */}
+          <div className="space-y-1.5">
+            <Label htmlFor="topics">Thématiques (séparées par virgules)</Label>
+            <Input
+              id="topics"
+              value={topicsInput}
+              onChange={(e) => setTopicsInput(e.target.value)}
+              placeholder="tech, IA, startups"
+            />
+            <p className="text-xs text-muted-foreground">
+              Utilisées en mode auto si aucune actualité ne correspond à la requête.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleAutoGenerate}
-            disabled={generating}
-            className="flex-shrink-0 inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg font-medium"
-          >
-            {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-            {generating ? 'Génération…' : 'Générer avec l\'IA'}
-          </button>
-        </div>
-        {reasoning && (
-          <div className="mt-2 text-xs text-gray-700 italic border-l-2 border-brand-300 pl-3">
-            {reasoning}
+
+          {/* News query + provider + age */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="newsApiQuery">Requête NewsAPI</Label>
+              <Input
+                id="newsApiQuery"
+                value={state.newsApiQuery}
+                onChange={(e) => setState({ ...state, newsApiQuery: e.target.value })}
+                placeholder="intelligence artificielle"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Source de l'actualité</Label>
+              <Select
+                value={state.preferredProvider}
+                onValueChange={(v) => setState({ ...state, preferredProvider: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="AUTO">Intelligent (Auto)</SelectItem>
+                  <SelectItem value="NewsAPI">NewsAPI</SelectItem>
+                  <SelectItem value="GNews">GNews</SelectItem>
+                  <SelectItem value="Mediastack">Mediastack</SelectItem>
+                  <SelectItem value="The Guardian">The Guardian</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Articles de moins de</Label>
+              <Select
+                value={String(state.maxArticleAgeHours)}
+                onValueChange={(v) =>
+                  setState({ ...state, maxArticleAgeHours: Number(v) })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AGE_PRESETS.map((p) => (
+                    <SelectItem key={p.hours} value={String(p.hours)}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        )}
-      </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Thématiques (séparées par virgules)</label>
-        <input
-          value={topicsInput}
-          onChange={(e) => setTopicsInput(e.target.value)}
-          placeholder="tech, IA, startups"
-          className="w-full px-3 py-2 border rounded-lg"
-        />
-        <p className="text-xs text-gray-500 mt-1">Utilisées en mode auto si aucune actualité ne correspond à la requête.</p>
-      </div>
+          <Separator />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Requête NewsAPI / Orchestrateur</label>
-          <input
-            value={state.newsApiQuery}
-            onChange={(e) => setState({ ...state, newsApiQuery: e.target.value })}
-            placeholder="intelligence artificielle"
-            className="w-full px-3 py-2 border rounded-lg"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Source de l'actualité</label>
-          <select
-            value={state.preferredProvider}
-            onChange={(e) => setState({ ...state, preferredProvider: e.target.value })}
-            className="w-full px-3 py-2 border rounded-lg"
-          >
-            <option value="AUTO">🤖 Intelligent (Auto)</option>
-            <option value="NewsAPI">NewsAPI</option>
-            <option value="GNews">GNews</option>
-            <option value="Mediastack">Mediastack</option>
-            <option value="The Guardian">The Guardian</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Articles de moins de</label>
-          <select
-            value={state.maxArticleAgeHours}
-            onChange={(e) => setState({ ...state, maxArticleAgeHours: Number(e.target.value) })}
-            className="w-full px-3 py-2 border rounded-lg"
-          >
-            {AGE_PRESETS.map((p) => (
-              <option key={p.hours} value={p.hours}>{p.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <label className="block text-sm font-medium">Catégories WordPress par défaut</label>
-          <button
-            type="button"
-            onClick={loadCategories}
-            disabled={loadingCats}
-            className="text-xs text-brand-600 hover:underline flex items-center gap-1"
-          >
-            <RefreshCcw size={12} /> {loadingCats ? 'Chargement…' : 'Recharger'}
-          </button>
-        </div>
-        {categories.length === 0 ? (
-          <div className="text-xs text-gray-500 border rounded-lg px-3 py-2">
-            {loadingCats ? 'Récupération des catégories…' : 'Aucune catégorie chargée. Vérifie la connexion WP.'}
+          {/* Categories */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Catégories WordPress par défaut</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={loadCategories}
+                disabled={loadingCats}
+                className="h-7 text-xs"
+              >
+                {loadingCats ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RefreshCcw className="h-3 w-3" />
+                )}
+                {loadingCats ? 'Chargement…' : 'Recharger'}
+              </Button>
+            </div>
+            {categories.length === 0 ? (
+              <div className="text-xs text-muted-foreground border rounded-md px-3 py-2">
+                {loadingCats
+                  ? 'Récupération des catégories…'
+                  : 'Aucune catégorie chargée. Vérifie la connexion WP.'}
+              </div>
+            ) : (
+              <div className="rounded-md border p-3 max-h-48 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {categories.map((cat) => (
+                  <label
+                    key={cat.id}
+                    className="flex items-center gap-2 text-sm cursor-pointer hover:text-foreground transition-colors"
+                  >
+                    <Checkbox
+                      checked={state.defaultCategoryIds.includes(cat.id)}
+                      onCheckedChange={() => toggleCategory(cat.id)}
+                    />
+                    <span className="truncate flex-1">{cat.name}</span>
+                    <span className="text-xs text-muted-foreground">({cat.count})</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Les articles publiés depuis cette app seront classés dans ces catégories.
+            </p>
           </div>
-        ) : (
-          <div className="border rounded-lg p-3 max-h-48 overflow-y-auto grid grid-cols-2 gap-2">
-            {categories.map((cat) => (
-              <label key={cat.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={state.defaultCategoryIds.includes(cat.id)}
-                  onChange={() => toggleCategory(cat.id)}
-                  className="accent-brand-600"
-                />
-                <span className="truncate">{cat.name}</span>
-                <span className="text-xs text-gray-400">({cat.count})</span>
-              </label>
-            ))}
+
+          {/* Custom prompt */}
+          <div className="space-y-1.5">
+            <Label htmlFor="customPrompt">Prompt personnalisé (optionnel)</Label>
+            <Textarea
+              id="customPrompt"
+              value={state.customPrompt}
+              onChange={(e) => setState({ ...state, customPrompt: e.target.value })}
+              rows={4}
+              placeholder="Instructions supplémentaires pour le rédacteur…"
+              className="font-mono text-xs"
+            />
           </div>
-        )}
-        <p className="text-xs text-gray-500 mt-1">
-          Les articles publiés depuis cette app seront classés dans ces catégories.
-        </p>
-      </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Prompt personnalisé (optionnel)</label>
-        <textarea
-          value={state.customPrompt}
-          onChange={(e) => setState({ ...state, customPrompt: e.target.value })}
-          rows={4}
-          placeholder="Instructions supplémentaires pour le rédacteur..."
-          className="w-full px-3 py-2 border rounded-lg font-mono text-sm"
-        />
-      </div>
+          <Separator />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Articles par jour (cron auto)</label>
-          <input
-            type="number"
-            min={0}
-            max={20}
-            value={state.articlesPerDay}
-            onChange={(e) => setState({ ...state, articlesPerDay: Number(e.target.value) })}
-            className="w-full px-3 py-2 border rounded-lg"
-          />
-        </div>
-        <label className="flex items-center gap-3 mt-6 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={state.autoMode}
-            onChange={(e) => setState({ ...state, autoMode: e.target.checked })}
-            className="w-5 h-5 accent-brand-600"
-          />
-          <span className="text-sm font-medium">Activer le mode automatique (cron)</span>
-        </label>
-      </div>
-
-      <label className="flex items-start gap-3 cursor-pointer pt-2 border-t">
-        <input
-          type="checkbox"
-          checked={state.autoImage}
-          onChange={(e) => setState({ ...state, autoImage: e.target.checked })}
-          className="w-5 h-5 accent-brand-600 mt-0.5"
-        />
-        <ImageIcon size={16} className="text-gray-500 mt-1" />
-        <div className="flex-1">
-          <div className="text-sm font-medium">Exiger une image à la une</div>
-          <div className="text-xs text-gray-500">
-            L'image vient toujours d'un vrai article NewsAPI (3 niveaux de recherche).
-            Si activé : la publication échoue si aucune image n'est trouvée.
-            Si désactivé : l'article est publié sans image plutôt que d'échouer.
+          {/* Auto mode + frequency */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            <div className="space-y-1.5">
+              <Label htmlFor="articlesPerDay">Articles par jour (cron auto)</Label>
+              <Input
+                id="articlesPerDay"
+                type="number"
+                min={0}
+                max={20}
+                value={state.articlesPerDay}
+                onChange={(e) =>
+                  setState({ ...state, articlesPerDay: Number(e.target.value) })
+                }
+              />
+            </div>
+            <div className="rounded-md border bg-card p-3 flex items-start gap-3 mt-7 md:mt-0 md:self-end">
+              <Switch
+                id="autoMode"
+                checked={state.autoMode}
+                onCheckedChange={(v) => setState({ ...state, autoMode: v })}
+              />
+              <Label htmlFor="autoMode" className="cursor-pointer flex-1">
+                <div>Mode automatique</div>
+                <div className="text-xs font-normal text-muted-foreground mt-0.5">
+                  Active la publication automatique selon la fréquence définie.
+                </div>
+              </Label>
+            </div>
           </div>
-        </div>
-      </label>
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg font-medium"
-      >
-        {saving ? 'Enregistrement...' : 'Enregistrer'}
-      </button>
-    </form>
+          {/* Auto image */}
+          <div className="rounded-md border p-3 flex items-start gap-3">
+            <Checkbox
+              id="autoImage"
+              checked={state.autoImage}
+              onCheckedChange={(v) => setState({ ...state, autoImage: !!v })}
+              className="mt-0.5"
+            />
+            <ImageIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <Label htmlFor="autoImage" className="cursor-pointer">
+                Exiger une image à la une
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                L'image vient toujours d'un vrai article NewsAPI (3 niveaux de recherche). Si
+                activé : la publication échoue si aucune image n'est trouvée. Si désactivé :
+                l'article est publié sans image plutôt que d'échouer.
+              </p>
+            </div>
+          </div>
+
+          <Button type="submit" disabled={saving} size="lg">
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {saving ? 'Enregistrement…' : 'Enregistrer'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

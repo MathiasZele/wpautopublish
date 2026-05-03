@@ -2,10 +2,30 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Smartphone, Wifi, WifiOff, RefreshCw, LogOut,
-  Shield, MessageCircle, Plus, Trash2, UserCheck
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  Shield,
+  MessageCircle,
+  Plus,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
 import Image from 'next/image';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 type ConnectionState = 'open' | 'close' | 'connecting' | 'unknown';
 
@@ -24,7 +44,6 @@ interface AllowedNumber {
 }
 
 export default function WhatsAppPage() {
-  // Connection state
   const [status, setStatus] = useState<InstanceStatus | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,15 +51,11 @@ export default function WhatsAppPage() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [pollingId, setPollingId] = useState<ReturnType<typeof setInterval> | null>(null);
 
-  // Allowlist state
   const [allowedNumbers, setAllowedNumbers] = useState<AllowedNumber[]>([]);
   const [newPhone, setNewPhone] = useState('');
-  const [newLabel, setNewLabel] = useState('');
-  const [addError, setAddError] = useState('');
   const [addLoading, setAddLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // History state
   const [logs, setLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
@@ -52,11 +67,14 @@ export default function WhatsAppPage() {
         setStatus(data);
         if (data.state === 'open') {
           setQrCode(null);
-          if (pollingId) { clearInterval(pollingId); setPollingId(null); }
+          if (pollingId) {
+            clearInterval(pollingId);
+            setPollingId(null);
+          }
         }
       }
     } catch (e) {
-      console.error('Status fetch error', e);
+      // pas critique
     } finally {
       setLoading(false);
     }
@@ -84,10 +102,16 @@ export default function WhatsAppPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => () => { if (pollingId) clearInterval(pollingId); }, [pollingId]);
+  useEffect(
+    () => () => {
+      if (pollingId) clearInterval(pollingId);
+    },
+    [pollingId],
+  );
 
   const handleConnect = async () => {
-    setConnecting(true); setQrCode(null);
+    setConnecting(true);
+    setQrCode(null);
     try {
       const res = await fetch('/api/whatsapp/connect', { method: 'POST' });
       const data = await res.json();
@@ -96,45 +120,49 @@ export default function WhatsAppPage() {
         const id = setInterval(fetchStatus, 5000);
         setPollingId(id);
       }
-    } finally { setConnecting(false); }
+    } finally {
+      setConnecting(false);
+    }
   };
 
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
       await fetch('/api/whatsapp/logout', { method: 'POST' });
-      setStatus(prev => prev ? { ...prev, state: 'close' } : null);
+      setStatus((prev) => (prev ? { ...prev, state: 'close' } : null));
       setQrCode(null);
-    } finally { setLoggingOut(false); }
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const handleAddNumber = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAddError('');
     if (!newPhone.trim()) return;
     setAddLoading(true);
     try {
       const res = await fetch('/api/whatsapp/allowed-numbers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: newPhone.trim(), label: newLabel.trim() || undefined }),
+        body: JSON.stringify({ phoneNumber: newPhone.trim() }),
       });
       if (res.ok) {
-        setNewPhone(''); setNewLabel('');
+        setNewPhone('');
         fetchAllowedNumbers();
-      } else {
-        const data = await res.json();
-        setAddError(data.error || 'Erreur lors de l\'ajout.');
       }
-    } finally { setAddLoading(false); }
+    } finally {
+      setAddLoading(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
       await fetch(`/api/whatsapp/allowed-numbers/${id}`, { method: 'DELETE' });
-      setAllowedNumbers(prev => prev.filter(n => n.id !== id));
-    } finally { setDeletingId(null); }
+      setAllowedNumbers((prev) => prev.filter((n) => n.id !== id));
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const isConnected = status?.state === 'open';
@@ -142,228 +170,289 @@ export default function WhatsAppPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <MessageCircle className="text-green-500" size={28} />
+          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2.5">
+            <MessageCircle className="h-5 w-5 text-success" />
             WhatsApp
           </h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Connectez un numéro et gérez les accès pour publier via WhatsApp.
           </p>
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={fetchLogs}
           disabled={logsLoading}
-          className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
           title="Actualiser l'historique"
         >
-          <RefreshCw size={20} className={logsLoading ? 'animate-spin' : ''} />
-        </button>
+          <RefreshCw className={cn('h-4 w-4', logsLoading && 'animate-spin')} />
+        </Button>
       </div>
 
-      {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (Status & Numbers) */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Connection Card */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className={`px-6 py-4 flex items-center gap-3 ${
-              isConnected ? 'bg-green-50 border-b border-green-100'
-              : isConnecting ? 'bg-yellow-50 border-b border-yellow-100'
-              : 'bg-gray-50 border-b border-gray-100'
-            }`}>
-              {isConnected ? <Wifi size={20} className="text-green-600" /> : <WifiOff size={20} className="text-gray-400" />}
+          <Card>
+            <CardHeader
+              className={cn(
+                'flex-row items-center gap-3 space-y-0 py-3 px-4 border-b',
+                isConnected
+                  ? 'bg-success/5 border-success/20'
+                  : isConnecting
+                    ? 'bg-warning/5 border-warning/20'
+                    : 'bg-muted/30',
+              )}
+            >
+              {isConnected ? (
+                <Wifi className="h-4 w-4 text-success" />
+              ) : (
+                <WifiOff className="h-4 w-4 text-muted-foreground" />
+              )}
               <div className="flex-1">
-                <p className={`font-semibold text-sm ${isConnected ? 'text-green-700' : 'text-gray-600'}`}>
-                  {loading ? 'Chargement...'
-                    : isConnected ? `✅ Connecté`
-                    : isConnecting ? '🔄 Connexion...'
-                    : '⚫ Déconnecté'}
+                <p className={cn('text-sm font-semibold', isConnected ? 'text-success' : '')}>
+                  {loading
+                    ? 'Chargement…'
+                    : isConnected
+                      ? 'Connecté'
+                      : isConnecting
+                        ? 'Connexion…'
+                        : 'Déconnecté'}
                 </p>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">
-                  {status?.profileName || 'Instance active'}
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {status?.profileName || 'Instance'}
                 </p>
               </div>
               {isConnected && status?.profilePictureUrl && (
-                <Image src={status.profilePictureUrl} alt="Profile" width={32} height={32}
-                  className="rounded-full border-2 border-green-200" />
+                <Image
+                  src={status.profilePictureUrl}
+                  alt="Profile"
+                  width={32}
+                  height={32}
+                  className="rounded-full border-2 border-success/30"
+                />
               )}
-            </div>
-
-            <div className="p-5 space-y-4">
+            </CardHeader>
+            <CardContent className="p-4 space-y-3">
               {qrCode && !isConnected && (
-                <div className="flex flex-col items-center gap-4 py-2">
-                  <div className="bg-white p-3 rounded-xl shadow-md border border-gray-200 inline-block">
+                <div className="flex flex-col items-center gap-3 py-2">
+                  <div className="bg-white p-3 rounded-md border inline-block">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
-                      alt="QR Code" className="w-48 h-48"
+                      alt="QR Code"
+                      className="w-44 h-44"
                     />
                   </div>
-                  <p className="text-xs text-gray-500 text-center leading-relaxed">
-                    Scannez avec WhatsApp <br/>
-                    <span className="font-medium text-gray-400">Appareils connectés → Associer</span>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Scannez avec WhatsApp <br />
+                    <span className="font-medium">Appareils connectés → Associer</span>
                   </p>
                 </div>
               )}
-
               <div className="flex gap-2">
                 {!isConnected && (
-                  <button onClick={handleConnect} disabled={connecting || loading}
-                    className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-medium py-2 rounded-xl text-sm transition-all shadow-sm">
-                    {connecting ? '...' : qrCode ? 'Rafraîchir' : 'Connecter'}
-                  </button>
+                  <Button
+                    onClick={handleConnect}
+                    disabled={connecting || loading}
+                    className="flex-1 bg-success hover:bg-success/90"
+                  >
+                    {connecting && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {connecting ? '…' : qrCode ? 'Rafraîchir' : 'Connecter'}
+                  </Button>
                 )}
                 {isConnected && (
-                  <button onClick={handleLogout} disabled={loggingOut}
-                    className="flex-1 flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-medium py-2 rounded-xl text-sm transition-all border border-red-100">
-                    {loggingOut ? '...' : 'Déconnecter'}
-                  </button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                    onClick={handleLogout}
+                    disabled={loggingOut}
+                  >
+                    {loggingOut && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {loggingOut ? '…' : 'Déconnecter'}
+                  </Button>
                 )}
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Allowlist Management Card */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <Shield size={18} className="text-blue-500" />
-              <h2 className="font-semibold text-sm text-gray-800">Accès restreint</h2>
-            </div>
+          <Card>
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                Accès restreint
+              </CardTitle>
+            </CardHeader>
+            <Separator />
+            <CardContent className="p-4 space-y-3">
+              <form onSubmit={handleAddNumber} className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Numéro (ex: 336…)"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, ''))}
+                />
+                <Button type="submit" size="icon" disabled={addLoading || !newPhone.trim()}>
+                  {addLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                </Button>
+              </form>
 
-            <form onSubmit={handleAddNumber} className="space-y-2">
-              <input
-                type="text"
-                placeholder="Numéro (ex: 336...)"
-                value={newPhone}
-                onChange={e => setNewPhone(e.target.value.replace(/\D/g, ''))}
-                className="w-full border border-gray-100 bg-gray-50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-              <button type="submit" disabled={addLoading || !newPhone.trim()}
-                className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-medium py-2 rounded-xl text-sm transition-all">
-                <Plus size={14} />
-                Ajouter
-              </button>
-            </form>
-
-            <div className="max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
-              {allowedNumbers.length === 0 ? (
-                <p className="text-[11px] text-gray-400 text-center py-4 italic">
-                  Aucun numéro (tous acceptés ⚠️)
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {allowedNumbers.map(n => (
-                    <li key={n.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg group">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-gray-700 truncate">+{n.phoneNumber}</p>
-                        {n.label && <p className="text-[10px] text-gray-400 truncate">{n.label}</p>}
-                      </div>
-                      <button
-                        onClick={() => handleDelete(n.id)}
-                        disabled={deletingId === n.id}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all"
+              <div className="max-h-[220px] overflow-y-auto pr-1">
+                {allowedNumbers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4 italic">
+                    Aucun numéro (tous acceptés)
+                  </p>
+                ) : (
+                  <ul className="space-y-1">
+                    {allowedNumbers.map((n) => (
+                      <li
+                        key={n.id}
+                        className="flex items-center justify-between p-2 rounded-md hover:bg-accent/40 group transition-colors"
                       >
-                        <Trash2 size={14} />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-mono font-semibold truncate">
+                            +{n.phoneNumber}
+                          </p>
+                          {n.label && (
+                            <p className="text-[10px] text-muted-foreground truncate">{n.label}</p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDelete(n.id)}
+                          disabled={deletingId === n.id}
+                        >
+                          {deletingId === n.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Right Column (Logs / History) */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full min-h-[500px]">
-            <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <RefreshCw size={18} className="text-brand-500" />
-                <h2 className="font-semibold text-gray-800">Historique des commandes</h2>
-              </div>
-              <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">
+          <Card className="flex flex-col min-h-[500px]">
+            <CardHeader className="flex-row items-center justify-between space-y-0 py-3 px-4">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                Historique des commandes
+              </CardTitle>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Dernières 50 requêtes
               </span>
-            </div>
-
-            <div className="flex-1 overflow-x-auto">
+            </CardHeader>
+            <Separator />
+            <div className="flex-1">
               {logs.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-gray-400 py-20">
-                  <MessageCircle size={48} className="opacity-10 mb-4" />
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-20">
+                  <MessageCircle className="h-12 w-12 opacity-10 mb-4" />
                   <p className="text-sm">Aucune activité enregistrée</p>
                 </div>
               ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="text-[11px] text-gray-400 uppercase tracking-wider bg-gray-50/50">
-                      <th className="px-6 py-3 font-medium">Date</th>
-                      <th className="px-6 py-3 font-medium">Expéditeur</th>
-                      <th className="px-6 py-3 font-medium">Action</th>
-                      <th className="px-6 py-3 font-medium">Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Expéditeur</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead>Statut</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {logs.map((log) => (
-                      <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <p className="text-xs font-medium text-gray-600">
-                            {new Date(log.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
-                          </p>
-                          <p className="text-[10px] text-gray-400">
-                            {new Date(log.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <p className="text-xs font-semibold text-gray-700">
-                            +{log.senderJid.split('@')[0]}
-                          </p>
-                        </td>
-                        <td className="px-6 py-4">
+                      <TableRow key={log.id}>
+                        <TableCell className="whitespace-nowrap text-xs">
+                          <div>
+                            {new Date(log.createdAt).toLocaleDateString('fr-FR', {
+                              day: '2-digit',
+                              month: 'short',
+                            })}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {new Date(log.createdAt).toLocaleTimeString('fr-FR', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs font-mono">
+                          +{log.senderJid.split('@')[0]}
+                        </TableCell>
+                        <TableCell>
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-600 font-medium">
-                                {log.totalCount} article(s)
-                              </span>
+                              <span className="text-xs">{log.totalCount} article(s)</span>
                               {log.articleLinks?.length > 0 && (
-                                <span className="text-[10px] bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded border border-brand-100">
-                                  {log.successCount} ✅
-                                </span>
+                                <Badge variant="success" className="text-[9px] py-0 h-4">
+                                  {log.successCount} ok
+                                </Badge>
                               )}
                             </div>
                             {log.articleLinks?.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1 max-w-[200px]">
-                                {log.articleLinks.slice(0, 3).map((link: string, i: number) => (
-                                  <a key={i} href={link} target="_blank" rel="noopener noreferrer" 
-                                    className="text-[9px] text-brand-500 hover:underline bg-gray-50 px-1 rounded truncate max-w-[80px]">
-                                    Article {i+1}
-                                  </a>
-                                ))}
+                              <div className="flex flex-wrap gap-1">
+                                {log.articleLinks
+                                  .slice(0, 3)
+                                  .map((link: string, i: number) => (
+                                    <a
+                                      key={i}
+                                      href={link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[10px] text-primary hover:underline bg-muted px-1 rounded"
+                                    >
+                                      #{i + 1}
+                                    </a>
+                                  ))}
                                 {log.articleLinks.length > 3 && (
-                                  <span className="text-[9px] text-gray-400">+{log.articleLinks.length - 3}</span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    +{log.articleLinks.length - 3}
+                                  </span>
                                 )}
                               </div>
                             )}
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter ${
-                            log.status === 'COMPLETED' ? 'bg-green-100 text-green-700'
-                            : log.status === 'FAILED' ? 'bg-red-100 text-red-700'
-                            : 'bg-blue-100 text-blue-700 animate-pulse'
-                          }`}>
-                            {log.status === 'COMPLETED' ? 'Succès' : log.status === 'FAILED' ? 'Échec' : 'En cours'}
-                          </span>
-                        </td>
-                      </tr>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              log.status === 'COMPLETED'
+                                ? 'success'
+                                : log.status === 'FAILED'
+                                  ? 'destructive'
+                                  : 'default'
+                            }
+                            className={cn(
+                              'text-[10px]',
+                              log.status === 'PENDING' && 'animate-pulse',
+                            )}
+                          >
+                            {log.status === 'COMPLETED'
+                              ? 'Succès'
+                              : log.status === 'FAILED'
+                                ? 'Échec'
+                                : 'En cours'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

@@ -4,7 +4,11 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,37 +35,31 @@ export default function LoginPage() {
 
   return (
     <>
-      <h2 className="text-xl font-semibold mb-6">Connexion</h2>
+      <h2 className="text-xl font-semibold tracking-tight mb-1">Connexion</h2>
+      <p className="text-sm text-muted-foreground mb-6">Accédez à votre tableau de bord</p>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Email</label>
-          <input
-            type="email"
-            name="email"
-            required
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"
-          />
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" type="email" name="email" required autoComplete="email" />
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Mot de passe</label>
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Mot de passe</Label>
+          <Input
+            id="password"
             type="password"
             name="password"
             required
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"
+            autoComplete="current-password"
           />
         </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white py-2 rounded-lg font-medium transition"
-        >
-          {loading ? 'Connexion...' : 'Se connecter'}
-        </button>
+        <Button type="submit" disabled={loading} className="w-full" size="lg">
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          {loading ? 'Connexion…' : 'Se connecter'}
+        </Button>
       </form>
-      <p className="mt-4 text-sm text-center text-gray-600">
+      <p className="mt-6 text-sm text-center text-muted-foreground">
         Pas de compte ?{' '}
-        <Link href="/register" className="text-brand-600 hover:underline">
+        <Link href="/register" className="text-primary hover:underline font-medium">
           Créer un compte
         </Link>
       </p>

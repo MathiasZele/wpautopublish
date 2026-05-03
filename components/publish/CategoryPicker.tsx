@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCcw, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 interface WPCategory {
   id: number;
@@ -53,43 +56,50 @@ export function CategoryPicker({
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <label className="block text-sm font-medium">Catégories pour cette publication</label>
-        <button
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>Catégories pour cette publication</Label>
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={load}
           disabled={loading}
-          className="text-xs text-brand-600 hover:underline flex items-center gap-1"
+          className="h-7 text-xs"
         >
-          <RefreshCcw size={12} /> {loading ? '...' : 'Recharger'}
-        </button>
+          {loading ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <RefreshCcw className="h-3 w-3" />
+          )}
+          {loading ? '…' : 'Recharger'}
+        </Button>
       </div>
       {error ? (
-        <div className="text-xs text-red-600 border border-red-200 bg-red-50 rounded-lg px-3 py-2">{error}</div>
+        <div className="text-xs text-destructive border border-destructive/30 bg-destructive/10 rounded-md px-3 py-2">
+          {error}
+        </div>
       ) : cats.length === 0 ? (
-        <div className="text-xs text-gray-500 border rounded-lg px-3 py-2">
+        <div className="text-xs text-muted-foreground border rounded-md px-3 py-2">
           {loading ? 'Chargement…' : 'Aucune catégorie'}
         </div>
       ) : (
-        <div className="border rounded-lg p-3 max-h-32 overflow-y-auto grid grid-cols-2 gap-2">
+        <div className="rounded-md border p-3 max-h-32 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2">
           {cats.map((c) => (
-            <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selected.includes(c.id)}
-                onChange={() => toggle(c.id)}
-                className="accent-brand-600"
-              />
-              <span className="truncate">{c.name}</span>
-              <span className="text-xs text-gray-400">({c.count})</span>
+            <label
+              key={c.id}
+              className="flex items-center gap-2 text-sm cursor-pointer hover:text-foreground transition-colors"
+            >
+              <Checkbox checked={selected.includes(c.id)} onCheckedChange={() => toggle(c.id)} />
+              <span className="truncate flex-1">{c.name}</span>
+              <span className="text-xs text-muted-foreground">({c.count})</span>
             </label>
           ))}
         </div>
       )}
       {selected.length === 0 && cats.length > 0 && (
-        <p className="text-xs text-amber-600 mt-1">
-          Aucune catégorie sélectionnée → l'article ira dans la catégorie par défaut WordPress (ex: "Non classé").
+        <p className="text-xs text-warning">
+          Aucune catégorie sélectionnée → l'article ira dans la catégorie par défaut WordPress.
         </p>
       )}
     </div>

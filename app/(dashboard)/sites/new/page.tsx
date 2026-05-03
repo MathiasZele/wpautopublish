@@ -3,8 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, AlertTriangle, Copy, Check } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Copy, Check, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface CreatedSite {
   id: string;
@@ -28,7 +32,6 @@ export default function NewSitePage() {
       url: formData.get('url'),
       wpUsername: formData.get('wpUsername'),
       wpAppPassword: formData.get('wpAppPassword'),
-      // customEndpointKey volontairement omis : généré côté serveur
     };
 
     const res = await fetch('/api/sites', {
@@ -67,125 +70,125 @@ export default function NewSitePage() {
     router.refresh();
   }
 
-  // ─── Modal display-once ───────────────────────────────────────────────────
   if (created) {
     return (
-      <div className="max-w-2xl">
-        <h1 className="text-2xl font-bold mb-2">Site créé : {created.name}</h1>
+      <div className="max-w-2xl space-y-6">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Site créé — {created.name}
+        </h1>
 
-        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
-          <div className="flex items-start gap-3">
-            <AlertTriangle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h2 className="font-semibold text-amber-900">Clé secrète d'endpoint — à copier MAINTENANT</h2>
-              <p className="text-sm text-amber-800 mt-1">
-                Cette clé ne sera <strong>plus jamais affichée</strong>. Si vous la perdez,
-                il faudra la regénérer depuis le profil du site (et la recopier dans WordPress).
-              </p>
+        <Card className="border-warning/40 bg-warning/5">
+          <CardHeader>
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+              <div>
+                <CardTitle className="text-base">
+                  Clé secrète d'endpoint — à copier maintenant
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Cette clé ne sera <strong>plus jamais affichée</strong>. Si vous la perdez,
+                  il faudra la regénérer depuis le profil du site et la recopier dans WordPress.
+                </p>
+              </div>
             </div>
-          </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                readOnly
+                value={created.endpointSecret}
+                className="font-mono text-sm select-all"
+                onFocus={(e) => e.currentTarget.select()}
+              />
+              <Button
+                variant={copied ? 'default' : 'default'}
+                onClick={handleCopy}
+                className={copied ? 'bg-success hover:bg-success/90' : ''}
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? 'Copié' : 'Copier'}
+              </Button>
+            </div>
 
-          <div className="mt-4 flex gap-2">
-            <input
-              readOnly
-              value={created.endpointSecret}
-              className="flex-1 px-3 py-2 border border-amber-300 rounded-lg bg-white font-mono text-sm select-all"
-              onFocus={(e) => e.currentTarget.select()}
-            />
-            <button
-              type="button"
-              onClick={handleCopy}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
-                copied ? 'bg-emerald-600 text-white' : 'bg-amber-600 hover:bg-amber-700 text-white'
-              }`}
-            >
-              {copied ? <Check size={16} /> : <Copy size={16} />}
-              <span className="ml-1.5">{copied ? 'Copié' : 'Copier'}</span>
-            </button>
-          </div>
+            <div className="text-sm space-y-1.5">
+              <p className="font-semibold text-foreground">Étapes côté WordPress :</p>
+              <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                <li>
+                  Connectez-vous sur{' '}
+                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                    {created.url}/wp-admin
+                  </code>
+                </li>
+                <li>
+                  Allez dans <strong className="text-foreground">Réglages → WP AutoPublish</strong>
+                </li>
+                <li>Collez la clé dans le champ "Clé secrète" et enregistrez</li>
+              </ol>
+            </div>
+          </CardContent>
+        </Card>
 
-          <div className="mt-5 text-sm text-amber-900 space-y-1">
-            <p className="font-semibold">Étapes côté WordPress :</p>
-            <ol className="list-decimal list-inside space-y-0.5">
-              <li>Connectez-vous sur <code className="text-xs bg-amber-100 px-1 rounded">{created.url}/wp-admin</code></li>
-              <li>Allez dans <strong>Réglages → WP AutoPublish</strong></li>
-              <li>Collez la clé dans le champ "Clé secrète" et enregistrez</li>
-            </ol>
-          </div>
-        </div>
-
-        <button
-          onClick={handleContinue}
-          className="mt-6 w-full bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-lg font-medium"
-        >
+        <Button onClick={handleContinue} className="w-full" size="lg">
           J'ai copié la clé — Continuer vers le profil
-        </button>
+        </Button>
       </div>
     );
   }
 
-  // ─── Formulaire de création ───────────────────────────────────────────────
   return (
-    <div className="max-w-2xl">
-      <Link href="/sites" className="inline-flex items-center gap-1 text-sm text-gray-600 mb-4 hover:text-brand-600">
-        <ArrowLeft size={14} /> Retour aux sites
-      </Link>
-      <h1 className="text-2xl font-bold mb-2">Connecter un site WordPress</h1>
-      <p className="text-gray-500 text-sm mb-6">
-        Vous aurez besoin d'un Application Password WordPress et du plugin WP AutoPublish Helper installé.
-        La clé secrète d'endpoint sera générée automatiquement par le serveur après création.
-      </p>
+    <div className="max-w-2xl space-y-6">
+      <Button variant="ghost" size="sm" asChild className="-ml-2 text-muted-foreground">
+        <Link href="/sites">
+          <ArrowLeft className="h-3.5 w-3.5" /> Retour aux sites
+        </Link>
+      </Button>
 
-      <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-6 space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Nom du site</label>
-          <input
-            name="name"
-            required
-            placeholder="Mon Blog"
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">URL du site</label>
-          <input
-            name="url"
-            type="url"
-            required
-            placeholder="https://monsite.com"
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Nom d'utilisateur WordPress</label>
-          <input
-            name="wpUsername"
-            required
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Application Password</label>
-          <input
-            name="wpAppPassword"
-            type="password"
-            required
-            placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono text-sm"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            wp-admin → Utilisateurs → Profil → Application Passwords
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Connecter un site WordPress</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Vous aurez besoin d'un Application Password WordPress et du plugin WP AutoPublish
+          Helper installé. La clé secrète d'endpoint sera générée automatiquement par le serveur
+          après création.
+        </p>
+      </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white py-2.5 rounded-lg font-medium"
-        >
-          {loading ? 'Création...' : 'Créer le site'}
-        </button>
-      </form>
+      <Card>
+        <CardContent className="pt-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Nom du site</Label>
+              <Input id="name" name="name" required placeholder="Mon Blog" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="url">URL du site</Label>
+              <Input id="url" name="url" type="url" required placeholder="https://monsite.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="wpUsername">Nom d'utilisateur WordPress</Label>
+              <Input id="wpUsername" name="wpUsername" required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="wpAppPassword">Application Password</Label>
+              <Input
+                id="wpAppPassword"
+                name="wpAppPassword"
+                type="password"
+                required
+                placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                wp-admin → Utilisateurs → Profil → Application Passwords
+              </p>
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full" size="lg">
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {loading ? 'Création…' : 'Créer le site'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

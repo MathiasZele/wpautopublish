@@ -1,10 +1,21 @@
 import Link from 'next/link';
-import { Plus, ExternalLink } from 'lucide-react';
+import { Plus, ExternalLink, Globe } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { SiteRowActions } from '@/components/sites/SiteRowActions';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,78 +33,96 @@ export default async function SitesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Sites WordPress</h1>
-          <p className="text-gray-500 text-sm">Gérez vos sites connectés</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Sites WordPress</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Gérez vos sites connectés
+          </p>
         </div>
-        <Link
-          href="/sites/new"
-          className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-        >
-          <Plus size={16} /> Ajouter un site
-        </Link>
+        <Button asChild>
+          <Link href="/sites/new">
+            <Plus className="h-4 w-4" /> Ajouter un site
+          </Link>
+        </Button>
       </div>
 
       {sites.length === 0 ? (
-        <div className="bg-white border rounded-xl p-12 text-center">
-          <p className="text-gray-500 mb-4">Aucun site connecté pour le moment.</p>
-          <Link
-            href="/sites/new"
-            className="inline-flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm"
-          >
-            <Plus size={16} /> Connecter un premier site
-          </Link>
-        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Globe className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-foreground">Aucun site connecté</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+              Connectez un site WordPress pour commencer à publier automatiquement.
+            </p>
+            <Button asChild className="mt-5" size="sm">
+              <Link href="/sites/new">
+                <Plus className="h-4 w-4" /> Connecter un premier site
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="bg-white border rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
-              <tr>
-                <th className="px-6 py-3">Nom</th>
-                <th className="px-6 py-3">URL</th>
-                <th className="px-6 py-3">Statut</th>
-                <th className="px-6 py-3">Auto</th>
-                <th className="px-6 py-3">Articles</th>
-                <th className="px-6 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nom</TableHead>
+                <TableHead>URL</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead>Auto</TableHead>
+                <TableHead className="text-right">Articles</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {sites.map((site) => (
-                <tr key={site.id}>
-                  <td className="px-6 py-4 font-medium">
-                    <Link href={`/sites/${site.id}/profile`} className="hover:text-brand-600">
+                <TableRow key={site.id}>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/sites/${site.id}/profile`}
+                      className="hover:text-primary transition-colors"
+                    >
                       {site.name}
                     </Link>
-                  </td>
-                  <td className="px-6 py-4">
+                  </TableCell>
+                  <TableCell>
                     <a
                       href={site.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-gray-600 hover:text-brand-600"
+                      className="inline-flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors text-xs"
                     >
                       {site.url.replace(/^https?:\/\//, '')}
-                      <ExternalLink size={12} />
+                      <ExternalLink className="h-3 w-3" />
                     </a>
-                  </td>
-                  <td className="px-6 py-4">
+                  </TableCell>
+                  <TableCell>
                     <StatusBadge status={site.status} />
-                  </td>
-                  <td className="px-6 py-4 text-xs">
+                  </TableCell>
+                  <TableCell>
                     {site.profile?.autoMode ? (
-                      <span className="text-green-600 font-medium">ON</span>
+                      <Badge variant="success">ON</Badge>
                     ) : (
-                      <span className="text-gray-400">OFF</span>
+                      <Badge variant="outline" className="text-muted-foreground">
+                        OFF
+                      </Badge>
                     )}
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">{site._count.articles}</td>
-                  <td className="px-6 py-4 text-right">
-                    <SiteRowActions siteId={site.id} isActive={site.status === 'ACTIVE'} />
-                  </td>
-                </tr>
+                  </TableCell>
+                  <TableCell className="text-right num text-muted-foreground">
+                    {site._count.articles}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <SiteRowActions
+                      siteId={site.id}
+                      isActive={site.status === 'ACTIVE'}
+                    />
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </Card>
       )}
     </div>
   );

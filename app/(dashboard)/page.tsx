@@ -1,10 +1,25 @@
 import Link from 'next/link';
-import { Globe, FileText, Coins, Zap, ExternalLink, Send, Newspaper, History, Image as ImageIcon } from 'lucide-react';
+import {
+  Globe,
+  FileText,
+  Coins,
+  Zap,
+  ExternalLink,
+  Send,
+  Newspaper,
+  History,
+  Image as ImageIcon,
+  ArrowRight,
+} from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { StatsCard } from '@/components/ui/StatsCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { TokenChart } from '@/components/dashboard/TokenChart';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +42,7 @@ export default async function DashboardPage() {
     prisma.articleLog.findMany({
       where: { website: { userId } },
       orderBy: { createdAt: 'desc' },
-      take: 10,
+      take: 8,
       include: { website: { select: { name: true } } },
     }),
     prisma.articleLog.findMany({
@@ -64,112 +79,126 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-slide-up">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-outfit">Dashboard</h1>
-          <p className="text-slate-500 text-sm mt-1">Vue d'ensemble de votre activité automatisée</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Vue d'ensemble de votre activité automatisée
+          </p>
         </div>
-        <Link
-          href="/publish"
-          className="inline-flex items-center justify-center gap-2 premium-gradient hover:opacity-90 text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-brand-200 transition-all active:scale-95"
-        >
-          <Send size={16} /> Publier un article
-        </Link>
+        <Button asChild>
+          <Link href="/publish">
+            <Send className="h-4 w-4" /> Publier un article
+          </Link>
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up [animation-delay:100ms]">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatsCard label="Sites actifs" value={activeSites} icon={Globe} />
         <StatsCard label="Articles publiés" value={totalArticles} icon={FileText} />
-        <StatsCard label="Tokens ce mois" value={monthTokens.toLocaleString()} icon={Zap} />
         <StatsCard
-          label="Coût estimé ce mois"
+          label="Tokens ce mois"
+          value={monthTokens.toLocaleString()}
+          icon={Zap}
+        />
+        <StatsCard
+          label="Coût estimé"
           value={`$${monthCost.toFixed(4)}`}
           icon={Coins}
-          hint="OpenAI"
+          hint="OpenAI ce mois"
         />
       </div>
 
-      <div className="animate-slide-up [animation-delay:200ms]">
-        <TokenChart data={chartData} />
-      </div>
+      <TokenChart data={chartData} />
 
-      <div className="card-premium animate-slide-up [animation-delay:300ms]">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
-          <h3 className="font-bold text-slate-900 font-outfit flex items-center gap-2">
-            <History size={18} className="text-brand-500" />
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0 py-4">
+          <CardTitle className="text-base flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" />
             Activité récente
-          </h3>
-          <Link href="/history" className="text-xs font-semibold text-brand-600 hover:text-brand-700 bg-brand-50 px-3 py-1.5 rounded-full transition-colors">
-            Voir tout l'historique →
-          </Link>
-        </div>
-        {recent.length === 0 ? (
-          <div className="p-6 text-sm text-gray-500">Aucune publication pour l'instant.</div>
-        ) : (
-          <ul className="divide-y">
-            {recent.map((log) => (
-              <li key={log.id} className="px-6 py-3 flex items-center justify-between text-sm gap-3">
-                {log.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={log.imageUrl}
-                    alt=""
-                    className="w-12 h-12 rounded-lg object-cover flex-shrink-0 bg-gray-100"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 text-gray-300">
-                    <ImageIcon size={18} />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{log.title}</div>
-                  <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
-                    <span>{log.website.name}</span>
-                    <span>·</span>
-                    <span>{log.mode}</span>
-                    <span>·</span>
-                    <span>{log.createdAt.toLocaleString('fr-FR')}</span>
-                    {log.sourceName && log.sourceUrl && (
-                      <>
-                        <span>·</span>
+          </CardTitle>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/history">
+              Tout l'historique <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </CardHeader>
+        <Separator />
+        <CardContent className="p-0">
+          {recent.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              Aucune publication pour l'instant.
+              <div className="mt-3">
+                <Button asChild size="sm">
+                  <Link href="/publish">Publier le premier article</Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {recent.map((log) => (
+                <li
+                  key={log.id}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-accent/40 transition-colors"
+                >
+                  {log.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={log.imageUrl}
+                      alt=""
+                      className="h-10 w-10 rounded-md object-cover bg-muted flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0 text-muted-foreground/50">
+                      <ImageIcon className="h-4 w-4" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{log.title}</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
+                      <span>{log.website.name}</span>
+                      <span>·</span>
+                      <span>{log.mode}</span>
+                      <span>·</span>
+                      <span>{log.createdAt.toLocaleString('fr-FR')}</span>
+                      {log.providerName && (
+                        <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4">
+                          {log.providerName}
+                        </Badge>
+                      )}
+                      {log.sourceName && log.sourceUrl && (
                         <a
                           href={log.sourceUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-brand-600 hover:underline"
+                          className="inline-flex items-center gap-1 text-primary hover:underline"
                         >
-                          <Newspaper size={11} />
+                          <Newspaper className="h-3 w-3" />
                           {log.sourceName}
                         </a>
-                      </>
-                    )}
-                    {log.providerName && (
-                      <>
-                        <span>·</span>
-                        <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">
-                          {log.providerName}
-                        </span>
-                      </>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-                {log.wpPostUrl && (
-                  <a
-                    href={log.wpPostUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-brand-600 hover:underline whitespace-nowrap"
-                  >
-                    Voir <ExternalLink size={12} />
-                  </a>
-                )}
-                <StatusBadge status={log.status} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                  {log.wpPostUrl && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      asChild
+                      className="h-8 w-8 flex-shrink-0"
+                    >
+                      <a href={log.wpPostUrl} target="_blank" rel="noreferrer" title="Voir l'article">
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </Button>
+                  )}
+                  <StatusBadge status={log.status} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -3,10 +3,18 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Activity, Settings, Trash2, Zap } from 'lucide-react';
+import { Activity, Settings, Trash2, Zap, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-export function SiteRowActions({ siteId, isActive }: { siteId: string; isActive: boolean }) {
+export function SiteRowActions({
+  siteId,
+  isActive,
+}: {
+  siteId: string;
+  isActive: boolean;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState<'test' | 'delete' | 'run' | null>(null);
 
@@ -24,7 +32,7 @@ export function SiteRowActions({ siteId, isActive }: { siteId: string; isActive:
   }
 
   async function handleRun() {
-    const raw = prompt('Combien d\'articles à publier maintenant ?', '3');
+    const raw = prompt("Combien d'articles à publier maintenant ?", '3');
     if (!raw) return;
     const count = parseInt(raw, 10);
     if (Number.isNaN(count) || count < 1 || count > 50) {
@@ -67,40 +75,76 @@ export function SiteRowActions({ siteId, isActive }: { siteId: string; isActive:
   }
 
   return (
-    <div className="inline-flex items-center gap-1">
-      <button
-        onClick={handleTest}
-        disabled={busy !== null}
-        className="p-1.5 rounded hover:bg-gray-100 text-gray-600 disabled:opacity-50"
-        title="Tester la connexion"
-      >
-        <Activity size={16} />
-      </button>
+    <div className="inline-flex items-center gap-0.5">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleTest}
+            disabled={busy !== null}
+          >
+            {busy === 'test' ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Activity className="h-4 w-4" />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Tester la connexion</TooltipContent>
+      </Tooltip>
+
       {isActive && (
-        <button
-          onClick={handleRun}
-          disabled={busy !== null}
-          className="p-1.5 rounded hover:bg-amber-50 text-amber-600 disabled:opacity-50"
-          title="Lancer publication auto"
-        >
-          <Zap size={16} />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-warning hover:text-warning hover:bg-warning/10"
+              onClick={handleRun}
+              disabled={busy !== null}
+            >
+              {busy === 'run' ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Lancer publication auto</TooltipContent>
+        </Tooltip>
       )}
-      <Link
-        href={`/sites/${siteId}/profile`}
-        className="p-1.5 rounded hover:bg-gray-100 text-gray-600"
-        title="Configurer"
-      >
-        <Settings size={16} />
-      </Link>
-      <button
-        onClick={handleDelete}
-        disabled={busy !== null}
-        className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
-        title="Supprimer"
-      >
-        <Trash2 size={16} />
-      </button>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+            <Link href={`/sites/${siteId}/profile`}>
+              <Settings className="h-4 w-4" />
+            </Link>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Configurer</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={handleDelete}
+            disabled={busy !== null}
+          >
+            {busy === 'delete' ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Supprimer</TooltipContent>
+      </Tooltip>
     </div>
   );
 }

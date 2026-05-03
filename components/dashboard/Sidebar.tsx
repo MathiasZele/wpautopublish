@@ -2,8 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Globe, Send, History, LogOut, MessageCircle } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Globe,
+  Send,
+  History,
+  LogOut,
+  MessageCircle,
+  Sparkles,
+} from 'lucide-react';
 import { signOut } from 'next-auth/react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { ThemeToggle } from './ThemeToggle';
+import { cn } from '@/lib/utils';
 
 const links = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -17,47 +29,73 @@ export function Sidebar({ userEmail }: { userEmail?: string | null }) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:flex w-72 bg-white border-r min-h-screen flex-col sticky top-0 h-screen">
-      <div className="p-8">
-        <h1 className="text-2xl font-bold text-brand-600 font-outfit tracking-tight">WP AutoPublish</h1>
-        <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-1">Admin Panel</p>
+    <aside className="hidden lg:flex w-60 bg-card border-r border-border min-h-screen flex-col sticky top-0 h-screen">
+      <div className="px-5 py-5 flex items-center gap-2.5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
+          <Sparkles className="h-4 w-4" />
+        </div>
+        <div>
+          <div className="text-sm font-semibold leading-tight">WP AutoPublish</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Admin
+          </div>
+        </div>
       </div>
-      
-      <nav className="flex-1 px-4 space-y-1">
-        <div className="text-[10px] uppercase tracking-widest text-slate-400 font-bold px-3 mb-2">Navigation</div>
+
+      <Separator />
+
+      <nav className="flex-1 p-3 space-y-0.5">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold px-2 py-2">
+          Navigation
+        </div>
         {links.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname?.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all duration-200 group ${
+              className={cn(
+                'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm transition-colors',
                 active
-                  ? 'bg-brand-50 text-brand-600 font-semibold shadow-sm shadow-brand-100/50'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              }`}
+                  ? 'bg-primary/10 text-primary font-semibold'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+              )}
             >
-              <Icon size={18} className={`${active ? 'text-brand-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
-              {label}
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+              {active && (
+                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+              )}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-6 m-4 bg-slate-50 rounded-2xl border border-slate-100">
+      <Separator />
+
+      <div className="p-3 space-y-2">
         {userEmail && (
-          <div className="mb-4">
-            <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Session</p>
-            <p className="text-xs text-slate-700 font-medium truncate">{userEmail}</p>
+          <div className="px-2 py-1.5">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mb-0.5">
+              Session
+            </div>
+            <div className="text-xs font-medium text-foreground/90 truncate">
+              {userEmail}
+            </div>
           </div>
         )}
-        <button
-          onClick={() => signOut({ callbackUrl: '/login' })}
-          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors group"
-        >
-          <LogOut size={16} className="text-slate-400 group-hover:text-red-500" />
-          Déconnexion
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-1 justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            onClick={() => signOut({ callbackUrl: '/login' })}
+          >
+            <LogOut className="h-4 w-4" />
+            Déconnexion
+          </Button>
+        </div>
       </div>
     </aside>
   );

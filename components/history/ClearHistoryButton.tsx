@@ -1,18 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 
 export function ClearHistoryButton() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   async function handleClear() {
-    if (!confirm('Êtes-vous sûr de vouloir vider tout l\'historique ? Cette action est irréversible.')) {
+    if (
+      !confirm(
+        "Êtes-vous sûr de vouloir vider tout l'historique ? Cette action est irréversible.",
+      )
+    )
       return;
-    }
 
     setLoading(true);
     try {
@@ -28,13 +32,15 @@ export function ClearHistoryButton() {
   }
 
   return (
-    <button
+    <Button
+      variant="outline"
+      size="sm"
       onClick={handleClear}
       disabled={loading}
-      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+      className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
     >
-      <Trash2 size={16} />
-      {loading ? 'Suppression...' : 'Vider l\'historique'}
-    </button>
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+      {loading ? 'Suppression…' : "Vider l'historique"}
+    </Button>
   );
 }

@@ -1,16 +1,30 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Send, Sparkles, ImageIcon } from 'lucide-react';
+import { Send, Sparkles, ImageIcon, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CategoryPicker } from './CategoryPicker';
 import type { PublishSite } from './PublishTabs';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input, Textarea } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
   const [websiteId, setWebsiteId] = useState(sites[0]?.id ?? '');
   const [topic, setTopic] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [selectedCats, setSelectedCats] = useState<number[]>(sites[0]?.defaultCategoryIds ?? []);
+  const [selectedCats, setSelectedCats] = useState<number[]>(
+    sites[0]?.defaultCategoryIds ?? [],
+  );
   const [provider, setProvider] = useState('AUTO');
   const [formatOnly, setFormatOnly] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -45,111 +59,113 @@ export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
       return;
     }
 
-    toast.success('Article mis en file. Suivez sa progression dans l\'historique.', { duration: 5000 });
+    toast.success("Article mis en file. Suivez la progression dans l'historique.", {
+      duration: 5000,
+    });
     setTopic('');
     setImageUrl('');
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-6 space-y-4">
-      <div>
-        <label className="block text-sm font-medium mb-1">Site cible</label>
-        <select
-          value={websiteId}
-          onChange={(e) => setWebsiteId(e.target.value)}
-          required
-          className="w-full px-3 py-2 border rounded-lg"
-        >
-          {sites.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} — {s.url.replace(/^https?:\/\//, '')}
-            </option>
-          ))}
-        </select>
-      </div>
+    <Card>
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="websiteId">Site cible</Label>
+            <Select value={websiteId} onValueChange={setWebsiteId}>
+              <SelectTrigger id="websiteId">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {sites.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name} — {s.url.replace(/^https?:\/\//, '')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Sujet / texte source</label>
-        <textarea
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-          required
-          rows={5}
-          placeholder="Décrivez le sujet de l'article à générer..."
-          className="w-full px-3 py-2 border rounded-lg"
-        />
-      </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="topic">Sujet / texte source</Label>
+            <Textarea
+              id="topic"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              required
+              rows={5}
+              placeholder="Décrivez le sujet de l'article à générer…"
+            />
+          </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1 flex items-center gap-2">
-          <ImageIcon size={14} /> URL de l'image à la une (optionnel)
-        </label>
-        <input
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          type="url"
-          placeholder="https://..."
-          className="w-full px-3 py-2 border rounded-lg"
-        />
-        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-          <Sparkles size={12} className="text-brand-500" />
-          Si vide, l'app cherchera automatiquement une image correspondant au sujet.
-        </p>
-      </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="imageUrl" className="flex items-center gap-1.5">
+              <ImageIcon className="h-3.5 w-3.5" /> URL de l'image à la une (optionnel)
+            </Label>
+            <Input
+              id="imageUrl"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              type="url"
+              placeholder="https://…"
+            />
+            <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-primary" />
+              Si vide, l'app cherchera automatiquement une image correspondant au sujet.
+            </p>
+          </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Source de l'actualité</label>
-        <select
-          value={provider}
-          onChange={(e) => setProvider(e.target.value)}
-          disabled={formatOnly}
-          className="w-full px-3 py-2 border rounded-lg disabled:opacity-50"
-        >
-          <option value="AUTO">🤖 Intelligent (Auto)</option>
-          <option value="NewsAPI">NewsAPI</option>
-          <option value="GNews">GNews</option>
-          <option value="Mediastack">Mediastack</option>
-          <option value="The Guardian">The Guardian</option>
-        </select>
-        <p className="text-xs text-gray-500 mt-1">
-          L'orchestrateur choisira la meilleure source ou combinera les résultats si "Auto" est sélectionné.
-        </p>
-      </div>
+          <div className="space-y-1.5">
+            <Label>Source de l'actualité</Label>
+            <Select value={provider} onValueChange={setProvider} disabled={formatOnly}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AUTO">Intelligent (Auto)</SelectItem>
+                <SelectItem value="NewsAPI">NewsAPI</SelectItem>
+                <SelectItem value="GNews">GNews</SelectItem>
+                <SelectItem value="Mediastack">Mediastack</SelectItem>
+                <SelectItem value="The Guardian">The Guardian</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              L'orchestrateur choisira la meilleure source ou combinera les résultats en mode Auto.
+            </p>
+          </div>
 
-      <div className="flex items-start gap-2 p-3 bg-slate-50 border rounded-lg">
-        <input
-          type="checkbox"
-          id="formatOnly"
-          checked={formatOnly}
-          onChange={(e) => setFormatOnly(e.target.checked)}
-          className="mt-1 w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
-        />
-        <div>
-          <label htmlFor="formatOnly" className="text-sm font-medium text-gray-800 cursor-pointer">
-            Ne pas reformuler, formater uniquement (Mode direct)
-          </label>
-          <p className="text-xs text-gray-500 mt-0.5">
-            L'IA conservera votre texte exact. Elle se contentera d'ajouter les balises HTML (titres, paragraphes, listes) et de générer le SEO. Idéal si vous collez un article déjà rédigé.
-          </p>
-        </div>
-      </div>
+          <div className="flex items-start gap-3 rounded-md border bg-muted/30 p-3">
+            <Checkbox
+              id="formatOnly"
+              checked={formatOnly}
+              onCheckedChange={(v) => setFormatOnly(!!v)}
+              className="mt-0.5"
+            />
+            <div className="flex-1">
+              <Label htmlFor="formatOnly" className="cursor-pointer">
+                Ne pas reformuler, formater uniquement (Mode direct)
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                L'IA conservera votre texte exact. Elle se contentera d'ajouter les balises HTML
+                et de générer le SEO. Idéal si vous collez un article déjà rédigé.
+              </p>
+            </div>
+          </div>
 
-      {websiteId && (
-        <CategoryPicker
-          siteId={websiteId}
-          selected={selectedCats}
-          onChange={setSelectedCats}
-        />
-      )}
+          {websiteId && (
+            <CategoryPicker
+              siteId={websiteId}
+              selected={selectedCats}
+              onChange={setSelectedCats}
+            />
+          )}
 
-      <button
-        type="submit"
-        disabled={loading || !topic.trim()}
-        className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-lg font-medium"
-      >
-        <Send size={16} />
-        {loading ? 'Mise en file...' : 'Générer & publier'}
-      </button>
-    </form>
+          <Button type="submit" disabled={loading || !topic.trim()} size="lg">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {loading ? 'Mise en file…' : 'Générer & publier'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

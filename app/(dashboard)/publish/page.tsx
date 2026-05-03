@@ -1,7 +1,10 @@
 import Link from 'next/link';
+import { Send } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { PublishTabs } from '@/components/publish/PublishTabs';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,18 +28,27 @@ export default async function PublishPage() {
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Publication</h1>
-        <p className="text-gray-500 text-sm">Génère et publie des articles à la demande.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Publication</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Génère et publie des articles à la demande.
+        </p>
       </div>
 
       {sitesForUI.length === 0 ? (
-        <div className="bg-white border rounded-xl p-12 text-center text-sm text-gray-500">
-          Aucun site actif.{' '}
-          <Link href="/sites" className="text-brand-600 hover:underline">
-            Connecte d'abord un site
-          </Link>{' '}
-          et teste la connexion.
-        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Send className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium">Aucun site actif</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+              Connecte un site WordPress et teste la connexion avant de publier.
+            </p>
+            <Button asChild className="mt-5" size="sm">
+              <Link href="/sites">Aller aux sites</Link>
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <PublishTabs sites={sitesForUI} />
       )}

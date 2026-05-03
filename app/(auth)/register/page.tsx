@@ -4,7 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -46,47 +50,36 @@ export default function RegisterPage() {
 
   return (
     <>
-      <h2 className="text-xl font-semibold mb-6">Créer un compte</h2>
+      <h2 className="text-xl font-semibold tracking-tight mb-1">Créer un compte</h2>
+      <p className="text-sm text-muted-foreground mb-6">Démarrez en quelques secondes</p>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Nom</label>
-          <input
-            type="text"
-            name="name"
-            required
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"
-          />
+        <div className="space-y-1.5">
+          <Label htmlFor="name">Nom</Label>
+          <Input id="name" type="text" name="name" required autoComplete="name" />
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Email</label>
-          <input
-            type="email"
-            name="email"
-            required
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"
-          />
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" type="email" name="email" required autoComplete="email" />
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Mot de passe</label>
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Mot de passe</Label>
+          <Input
+            id="password"
             type="password"
             name="password"
             required
             minLength={8}
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"
+            autoComplete="new-password"
           />
         </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white py-2 rounded-lg font-medium transition"
-        >
-          {loading ? 'Création...' : 'Créer le compte'}
-        </button>
+        <Button type="submit" disabled={loading} className="w-full" size="lg">
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          {loading ? 'Création…' : 'Créer le compte'}
+        </Button>
       </form>
-      <p className="mt-4 text-sm text-center text-gray-600">
+      <p className="mt-6 text-sm text-center text-muted-foreground">
         Déjà un compte ?{' '}
-        <Link href="/login" className="text-brand-600 hover:underline">
+        <Link href="/login" className="text-primary hover:underline font-medium">
           Se connecter
         </Link>
       </p>
