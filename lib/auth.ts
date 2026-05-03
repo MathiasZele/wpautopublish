@@ -54,9 +54,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Sans ça, un user promu en ADMIN gardait son ancien rôle dans le JWT
       // jusqu'à expiration (30j par défaut).
       // ⚠️ Le callback jwt s'exécute aussi dans le middleware Next.js (Edge Runtime)
-      // où Prisma ne fonctionne pas. On try/catch : en edge la lookup échoue, on
-      // garde le rôle existant, et le refresh aura lieu au prochain hit en Node
-      // runtime (server component / route handler).
+      // où Prisma ne fonctionne pas. On skip directement en edge — le refresh
+      // aura lieu au prochain hit en Node runtime (server component / route handler).
+      if (process.env.NEXT_RUNTIME === 'edge') return token;
+
       const refreshedAt = ((token as Record<string, unknown>).roleRefreshedAt as number | undefined) ?? 0;
       const tokenId = token.id as string | undefined;
       if (tokenId && Date.now() - refreshedAt > ROLE_REFRESH_INTERVAL_MS) {
@@ -70,7 +71,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             (token as Record<string, unknown>).roleRefreshedAt = Date.now();
           }
         } catch {
-          // Edge runtime ou DB momentanément indisponible : on conserve le rôle JWT actuel.
+          // DB momentanément indisponible : on conserve le rôle JWT actuel.
         }
       }
       return token;
