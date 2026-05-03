@@ -8,17 +8,17 @@ import { auth } from '@/lib/auth';
  * développeur en oublie un.
  *
  * Routes publiques explicitement whitelisted (auth interne propre) :
- *   - /api/auth/*           : NextAuth handlers (login, signOut, callback)
- *   - /api/register         : création de compte
- *   - /api/health           : monitoring
- *   - /api/cron/trigger     : protégé par CRON_SECRET (timingSafeEqual)
- *   - /api/webhooks/evolution : protégé par EVOLUTION_WEBHOOK_SECRET (timingSafeEqual)
+ *   - /api/auth/*               : NextAuth handlers (login, signOut, callback)
+ *   - /api/register             : création de compte
+ *   - /api/health               : monitoring
+ *   - /api/cron/*               : protégé par CRON_SECRET (timingSafeEqual)
+ *   - /api/webhooks/*           : protégé par secret webhook par provider
  */
 const PUBLIC_API_PREFIXES = [
   '/api/auth/',
   '/api/register',
   '/api/health',
-  '/api/cron/trigger',
+  '/api/cron/',
   '/api/webhooks/',
 ];
 

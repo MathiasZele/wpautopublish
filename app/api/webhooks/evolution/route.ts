@@ -6,6 +6,7 @@ import { sendWhatsAppMessage, getMediaBase64 } from '@/lib/evolution';
 import { changeWordPressPostStatus, getWordPressPostInfo, fetchWordPressCategories } from '@/lib/wordpress';
 import { uploadImageFromBuffer } from '@/lib/cloudinary';
 import { decrypt } from '@/lib/encryption';
+import { consume, webhookLimit } from '@/lib/rateLimit';
 
 function checkWebhookAuth(authHeader: string | null): boolean {
   const secret = process.env.EVOLUTION_WEBHOOK_SECRET;
@@ -99,6 +100,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'unauthorized' });
     }
     const ownerUserId = allowed.userId;
+
+    // Rate limit par numéro envoyeur : 60 messages / min (post résolution allowlist
+    // pour ne pas pénaliser les pings non autorisés qui sont déjà rejetés).
+    const wlLimited = await consume(webhookLimit, senderNumber);
+    if (wlLimited) {
+      return NextResponse.json({ status: 'rate_limited' }, { status: 429 });
+    }
 
     if (!text && !isImage) return NextResponse.json({ status: 'no_text' });
 

@@ -50,8 +50,10 @@ export async function publishToWordPress(params: PublishParams) {
 
   if (!response.ok) {
     const bodySnippet = await response.text().catch(() => '');
+    // Log côté serveur uniquement (peut contenir chemins/version PHP/erreurs WP)
     console.error(`[publishToWordPress] ${response.status} ${response.statusText} | body: ${bodySnippet.slice(0, 300)}`);
-    throw new Error(`WordPress ${response.status}: ${bodySnippet.slice(0, 200)}`);
+    // Message générique côté client (pas de fuite d'info serveur)
+    throw new Error(`WordPress publish failed (HTTP ${response.status})`);
   }
 
   return response.json() as Promise<{ success: boolean; post_id: number; url: string }>;
@@ -241,8 +243,10 @@ export async function changeWordPressPostStatus(
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => res.statusText);
+    // Log détaillé serveur uniquement
     console.error(`Failed to change status of post ${postId} to ${status}: ${res.status} ${errorText}`);
-    return { success: false, error: `${res.status} ${res.statusText}` };
+    // Message générique pour le client (pas de body brut WP)
+    return { success: false, error: `WordPress error (HTTP ${res.status})` };
   }
 
   return { success: true };

@@ -40,7 +40,16 @@ export async function POST(req: Request) {
       },
     });
     return NextResponse.json(entry, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Ce numéro existe déjà pour votre compte.' }, { status: 409 });
+  } catch (e: any) {
+    // P2002 = violation de la contrainte unique sur phoneNumber.
+    // Comme phoneNumber est globalement unique, le numéro est soit déjà chez ce user,
+    // soit chez un autre. On reste vague côté message pour ne pas leak d'info cross-tenant.
+    if (e?.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'Ce numéro est déjà associé à un autre compte.' },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json({ error: 'Erreur lors de l\'ajout du numéro.' }, { status: 500 });
   }
 }

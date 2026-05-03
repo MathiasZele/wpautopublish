@@ -483,6 +483,13 @@ ${items || '_Aucun article publié_'}`;
   {
     connection,
     concurrency: 3,
+    // Un job de génération (NewsAPI + OpenAI + Cloudinary + WP) peut dépasser 30s
+    // largement. Sans ces tunings, BullMQ libère le lock à 30s par défaut, croit
+    // le worker mort, et retente le job déjà en cours → publication dupliquée.
+    lockDuration: 120_000,    // 2 min : marge confortable pour un job standard
+    lockRenewTime: 60_000,    // renouvelle à 1 min pour les jobs très longs (>2 min)
+    stalledInterval: 60_000,  // check des jobs bloqués toutes les minutes
+    maxStalledCount: 1,       // si un job stall, on l'échoue après 1 retry max
   },
 );
 

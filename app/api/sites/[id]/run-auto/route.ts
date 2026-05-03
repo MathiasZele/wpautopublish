@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getArticleQueue } from '@/lib/queue';
+import { consume, publishLimit } from '@/lib/rateLimit';
 
 const schema = z.object({
   count: z.number().int().min(1).max(50),
@@ -14,6 +15,10 @@ const schema = z.object({
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+
+  // Rate limit par userId : 30 jobs / heure (partagé avec /api/publish — somme totale)
+  const limited = await consume(publishLimit, session.user.id);
+  if (limited) return limited;
 
   const site = await prisma.website.findFirst({
     where: { id: params.id, userId: session.user.id },

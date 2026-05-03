@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { consume, registerLimit, getClientIp } from '@/lib/rateLimit';
 
 const schema = z.object({
   name: z.string().min(1).max(100),
@@ -10,6 +11,10 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
+  // Rate limit par IP : 5 inscriptions / min
+  const limited = await consume(registerLimit, getClientIp(req));
+  if (limited) return limited;
+
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
