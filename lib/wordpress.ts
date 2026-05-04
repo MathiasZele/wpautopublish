@@ -3,6 +3,47 @@ import { decrypt } from './encryption';
 import { assertPublicUrl } from './safeUrl';
 import { getOrSet } from './cache';
 
+/**
+ * Headers browser-like envoyés à TOUTES les requêtes vers WordPress.
+ *
+ * Pourquoi : certains sites WP sont derrière Cloudflare avec "Bot Fight Mode"
+ * activé, qui bloque les User-Agent non-browsers (cf. "Just a moment..." 403).
+ * Un UA Chrome récent + Accept réaliste suffit dans la plupart des cas.
+ *
+ * Pour les sites en "Under Attack Mode", la solution est de créer une
+ * WAF custom rule "Skip" sur les requêtes ayant le header
+ * `X-WP-Autopublish-Token` qui matche `WP_CLOUDFLARE_BYPASS_TOKEN`.
+ * Le token est ajouté ici si la variable d'env est définie.
+ */
+const BROWSER_HEADERS: Record<string, string> = {
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  'Accept': 'application/json, text/plain, */*',
+  'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+};
+
+function wpHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const headers = { ...BROWSER_HEADERS, ...extra };
+  const bypass = process.env.WP_CLOUDFLARE_BYPASS_TOKEN;
+  if (bypass) {
+    headers['X-WP-Autopublish-Token'] = bypass;
+  }
+  return headers;
+}
+
+/**
+ * Détecte si une réponse 403 vient de Cloudflare Bot Protection plutôt que de WP.
+ * Le body contient typiquement "Just a moment..." ou "challenges.cloudflare.com".
+ */
+function isCloudflareChallenge(bodySnippet: string): boolean {
+  const lower = bodySnippet.toLowerCase();
+  return (
+    lower.includes('just a moment') ||
+    lower.includes('challenges.cloudflare.com') ||
+    lower.includes('cf-chl-')
+  );
+}
+
 interface PublishParams {
   website: { url: string; customEndpointKey: string };
   title: string;
@@ -27,12 +68,10 @@ export async function publishToWordPress(params: PublishParams) {
 
   const response = await fetch(endpoint, {
     method: 'POST',
-    headers: {
+    headers: wpHeaders({
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'User-Agent': 'WPAutoPublish/1.4 (+https://wpautopublish-production.up.railway.app)',
       'X-WP-AutoPublish-Secret': decryptedSecret,
-    },
+    }),
     body: JSON.stringify({
       title: params.title,
       content: params.content,
@@ -50,9 +89,14 @@ export async function publishToWordPress(params: PublishParams) {
 
   if (!response.ok) {
     const bodySnippet = await response.text().catch(() => '');
-    // Log côté serveur uniquement (peut contenir chemins/version PHP/erreurs WP)
-    console.error(`[publishToWordPress] ${response.status} ${response.statusText} | body: ${bodySnippet.slice(0, 300)}`);
-    // Message générique côté client (pas de fuite d'info serveur)
+    console.error(
+      `[publishToWordPress] ${response.status} ${response.statusText} | body: ${bodySnippet.slice(0, 300)}`,
+    );
+    if (response.status === 403 && isCloudflareChallenge(bodySnippet)) {
+      throw new Error(
+        'Bloqué par Cloudflare Bot Protection. Configurez une WAF custom rule "Skip" pour le header X-WP-Autopublish-Token (voir doc).',
+      );
+    }
     throw new Error(`WordPress publish failed (HTTP ${response.status})`);
   }
 
@@ -68,21 +112,34 @@ export async function testWordPressConnection(
     const url = `${siteUrl.replace(/\/$/, '')}/wp-json/wp/v2/users/me`;
     await assertPublicUrl(url);
     const response = await fetch(url, {
-      headers: {
+      headers: wpHeaders({
         Authorization: `Basic ${Buffer.from(`${username}:${appPassword}`).toString('base64')}`,
-      },
+      }),
       cache: 'no-store',
       redirect: 'manual',
     });
     if (!response.ok) {
       if (response.status === 403) {
+        const bodySnippet = await response.text().catch(() => '');
+        if (isCloudflareChallenge(bodySnippet)) {
+          return {
+            success: false,
+            error:
+              'Bloqué par Cloudflare Bot Protection. Voir doc pour configurer une WAF custom rule.',
+          };
+        }
         return {
           success: false,
-          error: 'Accès refusé (403) — vérifiez que l\'API REST WordPress est activée et que les mots de passe d\'application sont autorisés',
+          error:
+            "Accès refusé (403) — vérifiez que l'API REST WordPress est activée et que les mots de passe d'application sont autorisés",
         };
       }
       if (response.status === 401) {
-        return { success: false, error: 'Identifiants incorrects (401) — vérifiez le nom d\'utilisateur et le mot de passe d\'application' };
+        return {
+          success: false,
+          error:
+            "Identifiants incorrects (401) — vérifiez le nom d'utilisateur et le mot de passe d'application",
+        };
       }
       return { success: false, error: `HTTP ${response.status}` };
     }
@@ -115,7 +172,7 @@ export async function fetchSiteContext(
 ): Promise<SiteContext> {
   const baseUrl = siteUrl.replace(/\/$/, '');
   const auth = `Basic ${Buffer.from(`${username}:${appPassword}`).toString('base64')}`;
-  const headers = { Authorization: auth };
+  const headers = wpHeaders({ Authorization: auth });
 
   await assertPublicUrl(baseUrl + '/wp-json/');
 
@@ -198,7 +255,7 @@ export async function fetchWordPressCategories(
       const url = `${baseUrl}/wp-json/wp/v2/categories?per_page=100&page=${page}`;
       await assertPublicUrl(url);
       const res = await fetch(url, {
-        headers: { Authorization: auth },
+        headers: wpHeaders({ Authorization: auth }),
         cache: 'no-store',
         redirect: 'manual',
       });
@@ -232,20 +289,19 @@ export async function changeWordPressPostStatus(
 
   const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      Authorization: auth,
-      'Content-Type': 'application/json',
-      'User-Agent': 'WPAutoPublish/1.4',
-    },
+    headers: wpHeaders({ Authorization: auth, 'Content-Type': 'application/json' }),
     body: JSON.stringify({ status }),
     redirect: 'manual',
   });
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => res.statusText);
-    // Log détaillé serveur uniquement
-    console.error(`Failed to change status of post ${postId} to ${status}: ${res.status} ${errorText}`);
-    // Message générique pour le client (pas de body brut WP)
+    console.error(
+      `Failed to change status of post ${postId} to ${status}: ${res.status} ${errorText}`,
+    );
+    if (res.status === 403 && isCloudflareChallenge(errorText)) {
+      return { success: false, error: 'Bloqué par Cloudflare Bot Protection' };
+    }
     return { success: false, error: `WordPress error (HTTP ${res.status})` };
   }
 
@@ -265,7 +321,7 @@ export async function getWordPressPostInfo(
   await assertPublicUrl(url);
 
   const res = await fetch(url, {
-    headers: { Authorization: auth, 'User-Agent': 'WPAutoPublish/1.4' },
+    headers: wpHeaders({ Authorization: auth }),
     redirect: 'manual',
   });
 
