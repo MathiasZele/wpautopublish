@@ -8,7 +8,9 @@ WORKDIR /app
 # ---- Dependencies ----
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+# npm ci may fail on cross-platform optional deps (@emnapi/*).
+# --prefer-offline + frozen lockfile intent: if ci fails, fall back to install.
+RUN npm ci || npm install --prefer-offline
 COPY prisma ./prisma
 RUN npx prisma generate
 
