@@ -38,6 +38,8 @@ ENV EVOLUTION_WEBHOOK_SECRET="build-placeholder"
 ENV EVOLUTION_INSTANCE_NAME="build"
 ENV AUTH_TRUST_HOST="true"
 
+# Ensure public/ exists (may be empty in repo)
+RUN mkdir -p public
 RUN npm run build
 
 # ---- Production ----
