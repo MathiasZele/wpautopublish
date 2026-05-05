@@ -23,12 +23,20 @@ COPY . .
 # Next.js server-side process.env.* are resolved at RUNTIME, not build time.
 # Only NEXT_PUBLIC_* would be inlined — this project has none.
 # Dummy values let `next build` compile without real secrets.
+# These are NOT real credentials — they only satisfy module-level checks.
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ENV DIRECT_URL="postgresql://build:build@localhost:5432/build"
 ENV NEXTAUTH_SECRET="build-placeholder-not-a-real-secret"
 ENV NEXTAUTH_URL="http://localhost:3000"
 ENV ENCRYPTION_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+ENV OPENAI_API_KEY="sk-build-placeholder"
+ENV REDIS_URL="redis://localhost:6379"
+ENV EVOLUTION_API_URL="http://localhost:8080"
+ENV EVOLUTION_API_KEY="build-placeholder"
+ENV EVOLUTION_WEBHOOK_SECRET="build-placeholder"
+ENV EVOLUTION_INSTANCE_NAME="build"
+ENV AUTH_TRUST_HOST="true"
 
 RUN npm run build
 
