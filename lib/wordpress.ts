@@ -273,6 +273,16 @@ export async function fetchWordPressCategories(
       });
       if (!res.ok) {
         if (res.status === 400 && page > 1) break;
+        if (res.status === 403) {
+          const body = await res.text().catch(() => '');
+          if (isCloudflareChallenge(body)) {
+            // On throw pour que l'API route renvoie un message clair au lieu
+            // d'une liste de catégories vide (qui bloque le UI sans explication).
+            throw new CloudflareBlockError(
+              'Bloqué par Cloudflare Bot Protection (récupération des catégories WP)',
+            );
+          }
+        }
         console.warn(`fetchWordPressCategories: ${res.status} on ${url} — returning partial results`);
         break;
       }

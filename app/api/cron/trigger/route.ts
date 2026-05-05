@@ -77,6 +77,10 @@ export async function POST(req: Request) {
             mode: 'AUTO',
             articleIndex: i,
             provider: site.profile.preferredProvider,
+            // Cron auto = on laisse l'IA choisir 1-3 catégories pertinentes parmi
+            // celles du site, sinon le worker tombe en fallback sur defaultCategoryIds
+            // qui peut contenir TOUTES les catégories du site (pollution).
+            autoCategorize: true,
           },
           { delay: i * 60_000 },
         );

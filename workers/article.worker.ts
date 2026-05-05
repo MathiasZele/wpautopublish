@@ -417,12 +417,27 @@ export const articleWorker = new Worker<ArticleJobData>(
     }
 
     // ─── Publication WordPress ──────────────────────────────────────────────
-    const finalCategoryIds =
+    // Garde-fou défensif : on cap toujours à 3 catégories max au final, même
+    // si profile.defaultCategoryIds en contient plus (cas observé : 22 cats
+    // sélectionnées dans le profil polluaient chaque article).
+    const MAX_FINAL_CATEGORIES = 3;
+    let finalCategoryIds =
       autoCategorize && seo.categoryIds && seo.categoryIds.length > 0
         ? seo.categoryIds
         : categoryIds && categoryIds.length > 0
         ? categoryIds
         : profile.defaultCategoryIds;
+    if (finalCategoryIds.length > MAX_FINAL_CATEGORIES) {
+      const original = finalCategoryIds.length;
+      log.warn(
+        { count: original, source: 'finalCategoryIds' },
+        'Cap final categoryIds to 3 (defensive)',
+      );
+      warnings.push(
+        `Catégories tronquées : ${original} → ${MAX_FINAL_CATEGORIES} (limite article)`,
+      );
+      finalCategoryIds = finalCategoryIds.slice(0, MAX_FINAL_CATEGORIES);
+    }
 
     log.info(
       { siteName: website.name, categoryIds: finalCategoryIds, tags: seo.tags },

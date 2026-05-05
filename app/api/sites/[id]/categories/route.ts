@@ -17,8 +17,17 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     const password = decrypt(site.wpAppPassword);
     const categories = await fetchWordPressCategories(site.url, site.wpUsername, password);
     return NextResponse.json(categories);
-  } catch (e) {
+  } catch (e: any) {
     console.error('fetchWordPressCategories failed', e);
+    if (e?.name === 'CloudflareBlockError') {
+      return NextResponse.json(
+        {
+          error:
+            'Bloqué par Cloudflare Bot Protection. Désactive Bot Fight Mode ou crée la WAF custom rule.',
+        },
+        { status: 502 },
+      );
+    }
     return NextResponse.json({ error: 'Impossible de récupérer les catégories' }, { status: 502 });
   }
 }
