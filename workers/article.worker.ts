@@ -1,9 +1,9 @@
 import 'dotenv/config';
-import { Worker, Job } from 'bullmq';
+import { Worker, Job, UnrecoverableError } from 'bullmq';
 import IORedis from 'ioredis';
 import { prisma } from '../lib/prisma';
 import { openai, buildArticlePrompt, parseArticleResponse, calculateCost } from '../lib/openai';
-import { publishToWordPress, fetchWordPressCategories } from '../lib/wordpress';
+import { publishToWordPress, fetchWordPressCategories, CloudflareBlockError } from '../lib/wordpress';
 import { sendWhatsAppMessage } from '../lib/evolution';
 import { decrypt } from '../lib/encryption';
 import { newsOrchestrator } from '../lib/news/orchestrator';
@@ -12,6 +12,21 @@ import { uploadImageFromUrl } from '../lib/cloudinary';
 import { sanitizeArticleHtml } from '../lib/sanitizeHtml';
 import { logger } from '../lib/logger';
 import type { ArticleJobData } from '../lib/queue';
+
+/**
+ * Anti-spam Cloudflare/WP : on étale les requêtes vers chaque site WP.
+ *
+ * - PUBLISH_COOLDOWN_MS : sleep humain après chaque publish réussie pour
+ *   éviter de ressembler à un bot. Avec concurrency=1 et 5s de sleep, on
+ *   plafonne naturellement à ~10 publishes/minute (publish ~5s + sleep 5s).
+ *
+ * - CF_FAILURE_WINDOW_S : fenêtre Redis pour compter les blocs Cloudflare
+ *   par site. Au-dessus du seuil (CF_FAILURE_THRESHOLD), on auto-pause le
+ *   site (Website.status = PAUSED) pour stopper la cascade d'erreurs.
+ */
+const PUBLISH_COOLDOWN_MS = 5_000;
+const CF_FAILURE_WINDOW_S = 300; // 5 min
+const CF_FAILURE_THRESHOLD = 3;
 
 if (!process.env.REDIS_URL) {
   throw new Error('REDIS_URL is required');
@@ -414,18 +429,28 @@ export const articleWorker = new Worker<ArticleJobData>(
       'Publishing to WordPress',
     );
 
-    const result = await publishToWordPress({
-      website,
-      title: seo.title || topic,
-      content: html,
-      yoast_title: seo.title,
-      yoast_metadesc: seo.metadesc,
-      yoast_focuskw: seo.focuskw,
-      featured_image_url: cloudinaryUrl,
-      status: draftMode ? 'draft' : 'publish',
-      categories: finalCategoryIds,
-      tags: seo.tags,
-    });
+    let result: { post_id: number; url: string };
+    try {
+      result = await publishToWordPress({
+        website,
+        title: seo.title || topic,
+        content: html,
+        yoast_title: seo.title,
+        yoast_metadesc: seo.metadesc,
+        yoast_focuskw: seo.focuskw,
+        featured_image_url: cloudinaryUrl,
+        status: draftMode ? 'draft' : 'publish',
+        categories: finalCategoryIds,
+        tags: seo.tags,
+      });
+    } catch (e) {
+      // Cloudflare bloque → inutile de retry, BullMQ skip directement.
+      // Le handler 'failed' incrémente le compteur et auto-pause le site.
+      if (e instanceof CloudflareBlockError) {
+        throw new UnrecoverableError(e.message);
+      }
+      throw e;
+    }
 
     try {
       await prisma.articleLog.create({
@@ -513,11 +538,18 @@ ${items || '_Aucun article publié_'}`;
       log.debug('No WhatsApp notification sent (no whatsAppRequestId and no senderJid/instanceId)');
     }
 
+    // Sleep "humain" avant de retourner pour étaler les publishes vers WP
+    // (évite que Cloudflare nous prenne pour un bot lors d'un burst de jobs).
+    await new Promise((r) => setTimeout(r, PUBLISH_COOLDOWN_MS));
+
     return { post_id: result.post_id, url: result.url, cost };
   },
   {
     connection,
-    concurrency: 3,
+    // concurrency 1 : les jobs sont sérialisés, pas de bursts parallèles vers
+    // le même domaine WP. Suffisant tant qu'on a peu de sites — à upgrader
+    // (rate limiter par-domaine via Redis) si on doit servir 10+ sites en // parallèle.
+    concurrency: 1,
     // Un job de génération (NewsAPI + OpenAI + Cloudinary + WP) peut dépasser 30s
     // largement. Sans ces tunings, BullMQ libère le lock à 30s par défaut, croit
     // le worker mort, et retente le job déjà en cours → publication dupliquée.
@@ -536,9 +568,52 @@ function sanitizeErrorForLog(message: string): string {
     .slice(0, 500);
 }
 
+/**
+ * Circuit breaker Cloudflare : on compte les blocs CF par site dans une
+ * fenêtre glissante de 5 min. Au-dessus du seuil, on auto-pause le site
+ * pour stopper la cascade (le user devra ré-activer après avoir réglé CF).
+ */
+async function trackCloudflareBlock(websiteId: string): Promise<void> {
+  const key = `cf-block:${websiteId}`;
+  try {
+    const count = await connection.incr(key);
+    if (count === 1) {
+      await connection.expire(key, CF_FAILURE_WINDOW_S);
+    }
+    if (count >= CF_FAILURE_THRESHOLD) {
+      await prisma.website.update({
+        where: { id: websiteId },
+        data: { status: 'PAUSED' },
+      });
+      log.warn(
+        { websiteId, count },
+        `Site auto-paused après ${CF_FAILURE_THRESHOLD} blocs Cloudflare en ${CF_FAILURE_WINDOW_S}s`,
+      );
+      // Reset le compteur pour qu'au ré-test après fix CF, on reparte propre
+      await connection.del(key);
+    }
+  } catch (e) {
+    log.warn({ err: e }, 'trackCloudflareBlock failed (non-blocking)');
+  }
+}
+
 articleWorker.on('failed', async (job, err) => {
   if (!job) return;
   log.error({ jobId: job.id, errMessage: err.message }, 'Job failed');
+
+  // Circuit breaker CF : si l'erreur est un bloc Cloudflare, on incrémente
+  // le compteur et on auto-pause le site au-dessus du seuil. La détection
+  // marche aussi via UnrecoverableError.cause si BullMQ a wrappé.
+  const cause = (err as Error & { cause?: unknown }).cause;
+  const isCfBlock =
+    err instanceof CloudflareBlockError ||
+    err.name === 'CloudflareBlockError' ||
+    cause instanceof CloudflareBlockError ||
+    (typeof err.message === 'string' && err.message.includes('Cloudflare Bot Protection'));
+  if (isCfBlock && job.data.websiteId) {
+    await trackCloudflareBlock(job.data.websiteId);
+  }
+
   try {
     // Idempotence : si un log existe déjà pour ce jobId (par ex. SUCCESS
     // créé en amont puis BullMQ a re-fired un retry), on ne crée pas un

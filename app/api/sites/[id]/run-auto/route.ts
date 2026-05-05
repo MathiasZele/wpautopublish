@@ -5,9 +5,14 @@ import { prisma } from '@/lib/prisma';
 import { getArticleQueue } from '@/lib/queue';
 import { consume, publishLimit } from '@/lib/rateLimit';
 
+// Spacing minimum 10s : avec concurrency=1 + cooldown 5s côté worker, on
+// sérialise déjà naturellement, mais le `delay` BullMQ étale les jobs en file
+// pour que le worker puisse traiter d'autres tâches entre temps. Anti-spam
+// supplémentaire : si tu enqueues 50 jobs avec spacing 0, ça ressemble à un
+// bot pour Cloudflare/WAF.
 const schema = z.object({
   count: z.number().int().min(1).max(50),
-  spacingSeconds: z.number().int().min(0).max(3600).optional(),
+  spacingSeconds: z.number().int().min(10).max(3600).default(30),
   categoryIds: z.array(z.number().int()).optional(),
   autoCategorize: z.boolean().optional(),
 });
@@ -50,7 +55,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         autoCategorize,
       },
       {
-        delay: (spacingSeconds ?? 0) * 1000 * i,
+        delay: spacingSeconds * 1000 * i,
       },
     );
     if (job.id) jobs.push(job.id);

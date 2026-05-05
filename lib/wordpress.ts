@@ -44,6 +44,18 @@ function isCloudflareChallenge(bodySnippet: string): boolean {
   );
 }
 
+/**
+ * Erreur typée pour les blocs Cloudflare Bot Protection.
+ * Le worker s'en sert pour : (1) ne pas retry (pas la peine), (2) incrémenter
+ * un compteur Redis et auto-pause le site après N échecs consécutifs.
+ */
+export class CloudflareBlockError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CloudflareBlockError';
+  }
+}
+
 interface PublishParams {
   website: { url: string; customEndpointKey: string };
   title: string;
@@ -93,7 +105,7 @@ export async function publishToWordPress(params: PublishParams) {
       `[publishToWordPress] ${response.status} ${response.statusText} | body: ${bodySnippet.slice(0, 300)}`,
     );
     if (response.status === 403 && isCloudflareChallenge(bodySnippet)) {
-      throw new Error(
+      throw new CloudflareBlockError(
         'Bloqué par Cloudflare Bot Protection. Configurez une WAF custom rule "Skip" pour le header X-WP-Autopublish-Token (voir doc).',
       );
     }
