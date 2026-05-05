@@ -99,7 +99,7 @@ export function CategoryPicker({
       )}
       {selected.length === 0 && cats.length > 0 && (
         <p className="text-xs text-warning">
-          Aucune catégorie sélectionnée → l'article ira dans la catégorie par défaut WordPress.
+          Aucune cat&eacute;gorie s&eacute;lectionn&eacute;e → l&apos;article ira dans la cat&eacute;gorie par d&eacute;faut WordPress.
         </p>
       )}
     </div>

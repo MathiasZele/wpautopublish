@@ -33,9 +33,21 @@ function wpHeaders(extra: Record<string, string> = {}): Record<string, string> {
 
 /**
  * Détecte si une réponse 403 vient de Cloudflare Bot Protection plutôt que de WP.
- * Le body contient typiquement "Just a moment..." ou "challenges.cloudflare.com".
+ *
+ * On exige DEUX conditions :
+ *   1. Le header `server` contient "cloudflare" OU un header `cf-ray` est présent
+ *      (preuve que la réponse vient bien de Cloudflare, pas d'un plugin WP).
+ *   2. Le body contient un marqueur de challenge page ("Just a moment...", etc.).
+ *
+ * Si seul le body matche (ex: le site est derrière CF comme CDN mais le 403 vient
+ * de WordPress lui-même), on ne classifie PAS comme CloudflareBlockError afin
+ * d'éviter un faux positif.
  */
-function isCloudflareChallenge(bodySnippet: string): boolean {
+function isCloudflareChallenge(headers: Headers, bodySnippet: string): boolean {
+  const server = (headers.get('server') ?? '').toLowerCase();
+  const hasCfHeader = server.includes('cloudflare') || !!headers.get('cf-ray');
+  if (!hasCfHeader) return false;
+
   const lower = bodySnippet.toLowerCase();
   return (
     lower.includes('just a moment') ||
@@ -104,7 +116,7 @@ export async function publishToWordPress(params: PublishParams) {
     console.error(
       `[publishToWordPress] ${response.status} ${response.statusText} | body: ${bodySnippet.slice(0, 300)}`,
     );
-    if (response.status === 403 && isCloudflareChallenge(bodySnippet)) {
+    if (response.status === 403 && isCloudflareChallenge(response.headers, bodySnippet)) {
       throw new CloudflareBlockError(
         'Bloqué par Cloudflare Bot Protection. Configurez une WAF custom rule "Skip" pour le header X-WP-Autopublish-Token (voir doc).',
       );
@@ -133,7 +145,7 @@ export async function testWordPressConnection(
     if (!response.ok) {
       if (response.status === 403) {
         const bodySnippet = await response.text().catch(() => '');
-        if (isCloudflareChallenge(bodySnippet)) {
+        if (isCloudflareChallenge(response.headers, bodySnippet)) {
           return {
             success: false,
             error:
@@ -275,13 +287,15 @@ export async function fetchWordPressCategories(
         if (res.status === 400 && page > 1) break;
         if (res.status === 403) {
           const body = await res.text().catch(() => '');
-          if (isCloudflareChallenge(body)) {
-            // On throw pour que l'API route renvoie un message clair au lieu
-            // d'une liste de catégories vide (qui bloque le UI sans explication).
+          if (isCloudflareChallenge(res.headers, body)) {
             throw new CloudflareBlockError(
               'Bloqué par Cloudflare Bot Protection (récupération des catégories WP)',
             );
           }
+          // Pas Cloudflare → log le vrai contenu de la 403 pour diagnostic
+          console.error(
+            `[fetchWordPressCategories] 403 non-CF | server: ${res.headers.get('server')} | body: ${body.slice(0, 300)}`,
+          );
         }
         console.warn(`fetchWordPressCategories: ${res.status} on ${url} — returning partial results`);
         break;
@@ -321,7 +335,7 @@ export async function changeWordPressPostStatus(
     console.error(
       `Failed to change status of post ${postId} to ${status}: ${res.status} ${errorText}`,
     );
-    if (res.status === 403 && isCloudflareChallenge(errorText)) {
+    if (res.status === 403 && isCloudflareChallenge(res.headers, errorText)) {
       return { success: false, error: 'Bloqué par Cloudflare Bot Protection' };
     }
     return { success: false, error: `WordPress error (HTTP ${res.status})` };

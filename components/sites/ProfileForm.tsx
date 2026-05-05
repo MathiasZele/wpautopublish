@@ -255,7 +255,7 @@ export function ProfileForm({ siteId, initial }: ProfileFormProps) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Source de l'actualité</Label>
+              <Label>Source de l&apos;actualit&eacute;</Label>
               <Select
                 value={state.preferredProvider}
                 onValueChange={(v) => setState({ ...state, preferredProvider: v })}
@@ -403,9 +403,9 @@ export function ProfileForm({ siteId, initial }: ProfileFormProps) {
                 Exiger une image à la une
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                L'image vient toujours d'un vrai article NewsAPI (3 niveaux de recherche). Si
-                activé : la publication échoue si aucune image n'est trouvée. Si désactivé :
-                l'article est publié sans image plutôt que d'échouer.
+                L&apos;image vient toujours d&apos;un vrai article NewsAPI (3 niveaux de recherche). Si
+                activ&eacute; : la publication &eacute;choue si aucune image n&apos;est trouv&eacute;e. Si d&eacute;sactiv&eacute; :
+                l&apos;article est publi&eacute; sans image plut&ocirc;t que d&apos;&eacute;chouer.
               </p>
             </div>
           </div>

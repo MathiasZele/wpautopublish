@@ -91,7 +91,7 @@ export function AutoRunForm({ sites }: { sites: PublishSite[] }) {
             <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground">
               <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5 text-warning" />
               <div>
-                Ce site n'a ni requête NewsAPI ni thématiques configurées. Va sur le profil du
+                Ce site n&apos;a ni requ&ecirc;te NewsAPI ni th&eacute;matiques configur&eacute;es. Va sur le profil du
                 site pour les ajouter.
               </div>
             </div>
@@ -99,7 +99,7 @@ export function AutoRunForm({ sites }: { sites: PublishSite[] }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="count">Nombre d'articles</Label>
+              <Label htmlFor="count">Nombre d&apos;articles</Label>
               <Input
                 id="count"
                 type="number"
@@ -133,7 +133,7 @@ export function AutoRunForm({ sites }: { sites: PublishSite[] }) {
               onCheckedChange={(v) => setAutoCategorize(!!v)}
             />
             <Label htmlFor="autoCategorize" className="cursor-pointer flex-1">
-              Laisser l'IA choisir la meilleure catégorie (Intelligent)
+              Laisser l&apos;IA choisir la meilleure cat&eacute;gorie (Intelligent)
             </Label>
           </div>
 
@@ -151,7 +151,7 @@ export function AutoRunForm({ sites }: { sites: PublishSite[] }) {
               />
               {autoCategorize && selectedCats.length === 0 && (
                 <p className="text-xs text-muted-foreground italic">
-                  Aucune sélection : l'IA piochera dans toutes les catégories du site.
+                  Aucune s&eacute;lection : l&apos;IA piochera dans toutes les cat&eacute;gories du site.
                 </p>
               )}
             </div>

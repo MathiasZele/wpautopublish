@@ -83,11 +83,11 @@ export default function NewSitePage() {
               <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
               <div>
                 <CardTitle className="text-base">
-                  Clé secrète d'endpoint — à copier maintenant
+                  Cl&eacute; secr&egrave;te d&apos;endpoint — &agrave; copier maintenant
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Cette clé ne sera <strong>plus jamais affichée</strong>. Si vous la perdez,
-                  il faudra la regénérer depuis le profil du site et la recopier dans WordPress.
+                  Cette cl&eacute; ne sera <strong>plus jamais affich&eacute;e</strong>. Si vous la perdez,
+                  il faudra la reg&eacute;n&eacute;rer depuis le profil du site et la recopier dans WordPress.
                 </p>
               </div>
             </div>
@@ -122,14 +122,14 @@ export default function NewSitePage() {
                 <li>
                   Allez dans <strong className="text-foreground">Réglages → WP AutoPublish</strong>
                 </li>
-                <li>Collez la clé dans le champ "Clé secrète" et enregistrez</li>
+                <li>Collez la cl&eacute; dans le champ &quot;Cl&eacute; secr&egrave;te&quot; et enregistrez</li>
               </ol>
             </div>
           </CardContent>
         </Card>
 
         <Button onClick={handleContinue} className="w-full" size="lg">
-          J'ai copié la clé — Continuer vers le profil
+          J&apos;ai copi&eacute; la cl&eacute; — Continuer vers le profil
         </Button>
       </div>
     );
@@ -146,9 +146,9 @@ export default function NewSitePage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Connecter un site WordPress</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Vous aurez besoin d'un Application Password WordPress et du plugin WP AutoPublish
-          Helper installé. La clé secrète d'endpoint sera générée automatiquement par le serveur
-          après création.
+          Vous aurez besoin d&apos;un Application Password WordPress et du plugin WP AutoPublish
+          Helper install&eacute;. La cl&eacute; secr&egrave;te d&apos;endpoint sera g&eacute;n&eacute;r&eacute;e automatiquement par le serveur
+          apr&egrave;s cr&eacute;ation.
         </p>
       </div>
 
@@ -164,7 +164,7 @@ export default function NewSitePage() {
               <Input id="url" name="url" type="url" required placeholder="https://monsite.com" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="wpUsername">Nom d'utilisateur WordPress</Label>
+              <Label htmlFor="wpUsername">Nom d&apos;utilisateur WordPress</Label>
               <Input id="wpUsername" name="wpUsername" required />
             </div>
             <div className="space-y-1.5">

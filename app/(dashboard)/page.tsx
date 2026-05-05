@@ -84,7 +84,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Vue d'ensemble de votre activité automatisée
+            Vue d&apos;ensemble de votre activit&eacute; automatis&eacute;e
           </p>
         </div>
         <Button asChild>
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
           </CardTitle>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/history">
-              Tout l'historique <ArrowRight className="h-3.5 w-3.5" />
+              Tout l&apos;historique <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
         </CardHeader>
@@ -128,7 +128,7 @@ export default async function DashboardPage() {
         <CardContent className="p-0">
           {recent.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
-              Aucune publication pour l'instant.
+              Aucune publication pour l&apos;instant.
               <div className="mt-3">
                 <Button asChild size="sm">
                   <Link href="/publish">Publier le premier article</Link>

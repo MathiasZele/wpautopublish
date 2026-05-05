@@ -100,7 +100,7 @@ export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
 
           <div className="space-y-1.5">
             <Label htmlFor="imageUrl" className="flex items-center gap-1.5">
-              <ImageIcon className="h-3.5 w-3.5" /> URL de l'image à la une (optionnel)
+              <ImageIcon className="h-3.5 w-3.5" /> URL de l&apos;image &agrave; la une (optionnel)
             </Label>
             <Input
               id="imageUrl"
@@ -111,12 +111,12 @@ export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
             />
             <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
               <Sparkles className="h-3 w-3 text-primary" />
-              Si vide, l'app cherchera automatiquement une image correspondant au sujet.
+              Si vide, l&apos;app cherchera automatiquement une image correspondant au sujet.
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Source de l'actualité</Label>
+            <Label>Source de l&apos;actualit&eacute;</Label>
             <Select value={provider} onValueChange={setProvider} disabled={formatOnly}>
               <SelectTrigger>
                 <SelectValue />
@@ -130,7 +130,7 @@ export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              L'orchestrateur choisira la meilleure source ou combinera les résultats en mode Auto.
+              L&apos;orchestrateur choisira la meilleure source ou combinera les r&eacute;sultats en mode Auto.
             </p>
           </div>
 
@@ -146,8 +146,8 @@ export function ManualPublishForm({ sites }: { sites: PublishSite[] }) {
                 Ne pas reformuler, formater uniquement (Mode direct)
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                L'IA conservera votre texte exact. Elle se contentera d'ajouter les balises HTML
-                et de générer le SEO. Idéal si vous collez un article déjà rédigé.
+                L&apos;IA conservera votre texte exact. Elle se contentera d&apos;ajouter les balises HTML
+                et de g&eacute;n&eacute;rer le SEO. Id&eacute;al si vous collez un article d&eacute;j&agrave; r&eacute;dig&eacute;.
               </p>
             </div>
           </div>

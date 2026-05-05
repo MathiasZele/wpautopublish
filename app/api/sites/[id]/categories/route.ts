@@ -28,6 +28,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         { status: 502 },
       );
     }
-    return NextResponse.json({ error: 'Impossible de récupérer les catégories' }, { status: 502 });
+    const message = e?.message ?? '';
+    const hint = message.includes('403')
+      ? "Accès refusé (403) — vérifiez les identifiants WP, que l'API REST est activée, et qu'aucun plugin de sécurité ne bloque les requêtes."
+      : `Impossible de récupérer les catégories : ${message.slice(0, 150)}`;
+    return NextResponse.json({ error: hint }, { status: 502 });
   }
 }

@@ -32,27 +32,36 @@ export async function getOrSet<T>(
   const redis = getRedis();
   if (!redis) return loader();
 
+  // 1. Tenter de lire depuis Redis
+  let cached: string | null = null;
   try {
     if (redis.status !== 'ready' && redis.status !== 'connecting') {
       await redis.connect().catch(() => {});
     }
-    const cached = await redis.get(key);
+    cached = await redis.get(key);
     if (cached) {
       try {
         return JSON.parse(cached) as T;
       } catch {
-        // entrée corrompue → fall-through
+        // entrée corrompue → fall-through vers loader
       }
     }
-    const value = await loader();
+  } catch (e) {
+    console.warn(`[cache] redis read error on ${key}: ${(e as Error).message} — fallback to direct loader`);
+  }
+
+  // 2. Appeler le loader (erreurs du loader propagées telles quelles, sans retry)
+  const value = await loader();
+
+  // 3. Stocker le résultat en cache (fire-and-forget)
+  try {
     redis.setex(key, ttlSeconds, JSON.stringify(value)).catch((e) => {
       console.warn(`[cache] set failed for ${key}: ${e.message}`);
     });
-    return value;
-  } catch (e) {
-    console.warn(`[cache] redis error on ${key}: ${(e as Error).message} — fallback to direct loader`);
-    return loader();
+  } catch {
+    // ignore write errors
   }
+  return value;
 }
 
 /**

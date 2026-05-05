@@ -83,7 +83,7 @@ export function DirectPublishForm({ sites }: { sites: PublishSite[] }) {
 
           <div className="space-y-1.5">
             <Label htmlFor="title" className="flex items-center gap-1.5">
-              <FileText className="h-3.5 w-3.5 text-muted-foreground" /> Titre de l'article
+              <FileText className="h-3.5 w-3.5 text-muted-foreground" /> Titre de l&apos;article
             </Label>
             <Input
               id="title"
