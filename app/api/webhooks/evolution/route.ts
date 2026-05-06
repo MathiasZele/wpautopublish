@@ -28,10 +28,7 @@ export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('apikey') || req.headers.get('authorization');
     if (!checkWebhookAuth(authHeader)) {
-      // Diagnostic : on log les NOMS des headers reçus (pas les valeurs) pour
-      // distinguer "Evolution n'envoie aucun header" vs "Evolution envoie le mauvais secret".
-      const receivedHeaders = Array.from(req.headers.keys());
-      log.warn({ receivedHeaders, hasApikey: !!req.headers.get('apikey'), hasAuth: !!req.headers.get('authorization') }, 'unauthorized webhook attempt');
+      log.warn('unauthorized webhook attempt');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

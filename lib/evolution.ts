@@ -9,15 +9,6 @@ const evolutionHeaders = {
   'apikey': EVOLUTION_API_KEY || '',
 };
 
-// Headers qu'Evolution doit ajouter à chaque webhook sortant pour authentifier
-// la requête côté /api/webhooks/evolution (timingSafeEqual sur EVOLUTION_WEBHOOK_SECRET).
-// Sans ça, les webhooks arrivent sans header `apikey` et sont rejetés en 401.
-function buildWebhookOutboundHeaders(): Record<string, string> | undefined {
-  const secret = process.env.EVOLUTION_WEBHOOK_SECRET;
-  if (!secret) return undefined;
-  return { apikey: secret };
-}
-
 // ─── Messaging ────────────────────────────────────────────────────────────────
 
 export async function sendWhatsAppMessage(instance: string, jid: string, text: string) {
@@ -117,7 +108,6 @@ export async function connectWhatsApp(instance: string): Promise<{ qrcode: strin
           url: `${appUrl}/api/webhooks/evolution`,
           webhookByEvents: false,
           events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
-          headers: buildWebhookOutboundHeaders(),
         } : undefined,
       }),
     });
@@ -188,45 +178,6 @@ export async function logoutWhatsApp(instance: string): Promise<boolean> {
   } catch (err) {
     log.error({ err }, 'Evolution logout network error');
     return false;
-  }
-}
-
-/**
- * Réapplique la config webhook sur une instance EXISTANTE sans la recréer
- * (préserve la session WhatsApp). À utiliser quand on change le secret webhook
- * ou pour propager `headers.apikey` sur des instances créées avant le fix.
- */
-export async function resyncEvolutionWebhook(instance: string): Promise<{ ok: boolean; status?: number; error?: string }> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL
-    ? process.env.NEXT_PUBLIC_APP_URL
-    : (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : '');
-
-  if (!appUrl) return { ok: false, error: 'APP URL not configured (NEXT_PUBLIC_APP_URL or RAILWAY_PUBLIC_DOMAIN)' };
-
-  try {
-    const res = await fetch(`${EVOLUTION_API_URL}/webhook/set/${instance}`, {
-      method: 'POST',
-      headers: evolutionHeaders,
-      body: JSON.stringify({
-        webhook: {
-          enabled: true,
-          url: `${appUrl}/api/webhooks/evolution`,
-          webhookByEvents: false,
-          events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
-          headers: buildWebhookOutboundHeaders(),
-        },
-      }),
-    });
-
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      log.error({ status: res.status, body, instance }, 'webhook/set failed');
-      return { ok: false, status: res.status, error: body };
-    }
-    return { ok: true, status: res.status };
-  } catch (err: any) {
-    log.error({ err, instance }, 'resyncEvolutionWebhook network error');
-    return { ok: false, error: err?.message ?? 'network error' };
   }
 }
 
