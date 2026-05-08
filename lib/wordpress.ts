@@ -143,13 +143,18 @@ export async function testWordPressConnection(
       redirect: 'manual',
     });
     if (!response.ok) {
+      const bodySnippet = await response.text().catch(() => '');
+      const serverHeader = response.headers.get('server') ?? '';
+      const cfRay = response.headers.get('cf-ray') ?? '';
+      console.error(
+        `[testWPConnection] HTTP ${response.status} | server: ${serverHeader} | cf-ray: ${cfRay} | body: ${bodySnippet.slice(0, 500)}`,
+      );
       if (response.status === 403) {
-        const bodySnippet = await response.text().catch(() => '');
         if (isCloudflareChallenge(response.headers, bodySnippet)) {
           return {
             success: false,
             error:
-              'Bloqué par Cloudflare Bot Protection. Voir doc pour configurer une WAF custom rule.',
+              `Bloqué par Cloudflare Bot Protection (server: ${serverHeader}, cf-ray: ${cfRay}, body snippet: ${bodySnippet.slice(0, 200)}). Voir doc pour configurer une WAF custom rule.`,
           };
         }
         return {
@@ -165,7 +170,7 @@ export async function testWordPressConnection(
             "Identifiants incorrects (401) — vérifiez le nom d'utilisateur et le mot de passe d'application",
         };
       }
-      return { success: false, error: `HTTP ${response.status}` };
+      return { success: false, error: `HTTP ${response.status} | body: ${bodySnippet.slice(0, 200)}` };
     }
     return { success: true };
   } catch (e) {
