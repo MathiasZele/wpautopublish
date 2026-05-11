@@ -8,8 +8,6 @@ WORKDIR /app
 # ---- Dependencies ----
 FROM base AS deps
 COPY package.json package-lock.json ./
-# npm ci may fail on cross-platform optional deps (@emnapi/*).
-# --prefer-offline + frozen lockfile intent: if ci fails, fall back to install.
 RUN npm ci || npm install --prefer-offline
 COPY prisma ./prisma
 RUN npx prisma generate
@@ -20,10 +18,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Next.js server-side process.env.* are resolved at RUNTIME, not build time.
-# Only NEXT_PUBLIC_* would be inlined — this project has none.
 # Dummy values let `next build` compile without real secrets.
-# These are NOT real credentials — they only satisfy module-level checks.
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ENV DIRECT_URL="postgresql://build:build@localhost:5432/build"
@@ -38,7 +33,6 @@ ENV EVOLUTION_WEBHOOK_SECRET="build-placeholder"
 ENV EVOLUTION_INSTANCE_NAME="build"
 ENV AUTH_TRUST_HOST="true"
 
-# Ensure public/ exists (may be empty in repo)
 RUN mkdir -p public
 RUN npm run build
 
@@ -52,15 +46,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy build output and runtime dependencies
+# Standalone output: only the necessary files
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/workers ./workers
 COPY --from=builder /app/lib ./lib
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/next.config.js ./next.config.js
 
 USER nextjs
 
@@ -68,6 +60,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# All secrets are injected by Railway as runtime env vars.
-# No ARG or ENV needed for sensitive data.
-CMD ["sh", "-c", "npx prisma migrate deploy && npx next start"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
