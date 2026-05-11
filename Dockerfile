@@ -8,7 +8,7 @@ WORKDIR /app
 # ---- Dependencies ----
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci || npm install --prefer-offline
+RUN npm ci
 COPY prisma ./prisma
 RUN npx prisma generate
 
