@@ -326,8 +326,12 @@ export const articleWorker = new Worker<ArticleJobData>(
       mode: promptMode,
     });
 
+    // Snapshot daté pour empêcher OpenAI de re-router silencieusement vers un modèle plus cher
+    // (cf. dashboard projet "wordpress auto" qui montrait des appels gpt-5_5-2026-04-23
+    // alors qu'on demandait l'alias non-pinné `gpt-4o-mini`).
+    const REQUESTED_MODEL = 'gpt-4o-mini-2024-07-18';
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: REQUESTED_MODEL,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
@@ -337,6 +341,10 @@ export const articleWorker = new Worker<ArticleJobData>(
       top_p: 0.9,
       max_tokens: 4000,
     });
+
+    // Vérification de routage : la réponse OpenAI contient le modèle réellement servi.
+    // Si ça diffère de REQUESTED_MODEL, c'est qu'OpenAI a re-routé côté serveur.
+    log.info({ requested: REQUESTED_MODEL, served: completion.model }, 'openai model check');
 
     const raw = completion.choices[0].message.content ?? '';
     const parsed = parseArticleResponse(raw); // throw si malformé
