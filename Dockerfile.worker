@@ -1,0 +1,38 @@
+# syntax=docker/dockerfile:1
+# Worker BullMQ — consume la queue 'article-queue' et publie sur WordPress.
+# Image dédiée (sans Next.js standalone, on n'a pas besoin du HTTP server).
+# Les migrations Prisma sont laissées au service web (CMD du Dockerfile principal),
+# pour éviter une race entre deux services qui essaient de migrate en même temps.
+
+FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat openssl
+WORKDIR /app
+
+# ---- Dependencies (full install incl. tsx pour pouvoir lancer le .ts directement) ----
+FROM base AS deps
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY prisma ./prisma
+RUN npx prisma generate
+
+# ---- Runner ----
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nodejs
+
+# Worker = node_modules complet (tsx + bullmq + ioredis + openai + prisma client...)
+# + sources TS du worker et de lib/.
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/prisma ./prisma
+COPY workers ./workers
+COPY lib ./lib
+COPY tsconfig.json ./
+COPY package.json ./
+
+USER nodejs
+
+CMD ["npx", "tsx", "workers/article.worker.ts"]
