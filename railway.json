@@ -1,11 +1,102 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
-  "build": {
-    "builder": "DOCKERFILE"
-  },
-  "deploy": {
-    "numReplicas": 1,
-    "sleepApplication": false,
-    "restartPolicyType": "ON_FAILURE"
+  "services": {
+    "wpautopublish-worker": {
+      "source": {
+        "repo": "MathiasZele/wpautopublish",
+        "branch": "main"
+      },
+      "deploy": {
+        "multiRegionConfig": {
+          "us-west2": {
+            "numReplicas": 1
+          }
+        }
+      }
+    },
+    "wpautopublish": {
+      "source": {
+        "repo": "MathiasZele/wpautopublish",
+        "branch": "main"
+      },
+      "networking": {
+        "serviceDomains": {
+          "wpautopublish-production.up.railway.app": {
+            "port": 8080
+          }
+        }
+      },
+      "deploy": {
+        "multiRegionConfig": {
+          "us-west2": {
+            "numReplicas": 1
+          }
+        }
+      }
+    },
+    "evolution-api": {
+      "source": {
+        "repo": "MathiasZele/evolution-api",
+        "branch": "main"
+      },
+      "networking": {
+        "serviceDomains": {
+          "evolution-api-production-9c21.up.railway.app": {}
+        }
+      },
+      "deploy": {
+        "multiRegionConfig": {
+          "us-west2": {
+            "numReplicas": 1
+          }
+        }
+      }
+    },
+    "Redis": {
+      "source": {
+        "image": "redis:8.2.1"
+      },
+      "networking": {
+        "tcpProxies": {
+          "6379": {}
+        }
+      },
+      "deploy": {
+        "startCommand": "/bin/sh -c \"rm -rf $RAILWAY_VOLUME_MOUNT_PATH/lost+found/ && exec docker-entrypoint.sh redis-server --requirepass $REDIS_PASSWORD --save 60 1 --dir $RAILWAY_VOLUME_MOUNT_PATH\"",
+        "multiRegionConfig": {
+          "us-west2": {
+            "numReplicas": 1
+          }
+        }
+      },
+      "volumes": {
+        "redis-data": {
+          "mountPath": "/data"
+        }
+      }
+    },
+    "Postgres": {
+      "source": {
+        "image": "ghcr.io/railwayapp-templates/postgres-ssl:18"
+      },
+      "networking": {
+        "tcpProxies": {
+          "5432": {}
+        }
+      },
+      "deploy": {
+        "multiRegionConfig": {
+          "us-west2": {
+            "numReplicas": 1
+          }
+        }
+      },
+      "volumes": {
+        "postgres-data": {
+          "mountPath": "/var/lib/postgresql/data"
+        }
+      }
+    }
   }
 }
+
